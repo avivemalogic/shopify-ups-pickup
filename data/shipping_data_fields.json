@@ -1,0 +1,49 @@
+[
+  {
+    "namespace": "pickups-options",
+    "key": "upsPickupsType",
+    "value": "all",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-options",
+    "key": "upsPickupsMapType",
+    "value": "test",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "enableOrderIntegration",
+    "value": "true",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "webServiceShipUrl",
+    "value": "https://beta.ship.co.il/ShipWebServices/ShipWBService.svc?wsdl",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "webServiceAuthUrl",
+    "value": "https://beta.ship.co.il/ShipWebServices/AuthenticationService.svc?wsdl",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "webServiceUsername",
+    "value": "example@ups.co.il",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "webServicePassword",
+    "value": "Web Service Password",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "orderIntegrationAutomatic",
+    "value": "false",
+    "value_type": "string"
+  }]

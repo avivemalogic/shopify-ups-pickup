@@ -1,0 +1,26 @@
+.ups-pickups-button {
+    width: 153px;
+    height: 103px;
+    font-family: ProtocolMFW,Arial,sans-serif !important;
+    background-color: #25408f !important;
+    background-position: center center !important;
+    background-image: url('https://www.pickuppoint.co.il/api/eCommercePickupButton.jpg') !important;
+    background-repeat: no-repeat !important;
+    cursor: pointer !important;
+}
+.ups-pickups-button.hide {
+    display: none;
+}
+.pick-ups-wrapper {
+    direction: rtl;
+}
+.pick-ups-wrapper .pick-ups-step__description {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: center;
+    direction: rtl;
+}
+.pick-ups-wrapper .pick-ups-step__description .ups-pickup-text {
+    width: 100%;
+}

@@ -1,0 +1,40 @@
+{
+  "name": "shopify-ups-pickup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node server",
+    "build": "next build",
+    "start": "NODE_ENV=production node server"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@shopify/app-bridge": "^1.28.0",
+    "@shopify/app-bridge-react": "^1.28.0",
+    "@shopify/koa-shopify-auth": "^3.1.70",
+    "@shopify/polaris": "^6.2.0",
+    "dotenv": "^8.2.0",
+    "isomorphic-fetch": "^3.0.0",
+    "koa": "^2.13.0",
+    "koa-bodyparser": "^4.3.0",
+    "koa-cors": "0.0.16",
+    "koa-router": "^9.4.0",
+    "koa-send": "^5.0.1",
+    "koa-session": "^6.0.0",
+    "koa-shopify-auth-cookieless": "^1.0.31",
+    "koa-static": "^5.0.0",
+    "lodash": "^4.1.7",
+    "next": "^10.0.9",
+    "open": "^7.3.0",
+    "pdf-lib": "^1.14.1",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "react-jss": "^10.5.0",
+    "soap": "^0.33.0",
+    "styled-components": "^5.2.1"
+  }
+}
