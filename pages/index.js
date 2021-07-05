@@ -30,10 +30,6 @@ class Index extends Component {
             'upsPickupsMapType': {},
             'upsPickupsOpenMapOnLoad': {},
             'enableOrderIntegration': {},
-            'webServiceShipUrl': {},
-            'webServiceAuthUrl': {},
-            'webServiceUsername': {},
-            'webServicePassword': {},
             'upsApiUrl': {},
             'upsIntegrationUsername': {},
             'upsIntegrationPassword': {},
@@ -179,39 +175,6 @@ class Index extends Component {
                                     Order Automatic Send is <TextStyle variation="strong">{state.orderIntegrationAutomatic.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
                                 </SettingToggle>
                             </div>
-
-                            <Card sectioned>
-                                <TextField
-                                    value={state.webServiceShipUrl.value}
-                                    onChange={this.handleChange('webServiceShipUrl')}
-                                    label="Web Service Ship URL"
-                                    type="text"
-                                />
-                            </Card>
-                            <Card sectioned>
-                                <TextField
-                                    value={state.webServiceAuthUrl.value}
-                                    onChange={this.handleChange('webServiceAuthUrl')}
-                                    label="Web Service Auth URL"
-                                    type="text"
-                                />
-                            </Card>
-                            <Card sectioned>
-                                <TextField
-                                    value={state.webServiceUsername.value}
-                                    onChange={this.handleChange('webServiceUsername')}
-                                    label="Web Service Username"
-                                    type="text"
-                                />
-                            </Card>
-                            <Card sectioned>
-                                <TextField
-                                    value={state.webServicePassword.value}
-                                    onChange={this.handleChange('webServicePassword')}
-                                    label="Web Service Password"
-                                    type="text"
-                                />
-                            </Card>
 
                             <Card sectioned>
                                 <TextField

@@ -1,6 +1,5 @@
 const { HOST } = process.env;
-const soap = require('soap');
-const { mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, webServiceAuthLogin, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod } = require('../../server/helper');
+const { mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -87,104 +86,6 @@ function splitPhonePrefix(phoneNumber){
         'prefix': prefix,
         'number': validatedNumber.replace(prefix, '')
     }
-}
-
-async function webServiceSendToUps(authClient, integrationData, getOrderJson, orderPickupsData){
-    const webServiceShipUrl = integrationData.find((item) => item.key === 'webServiceShipUrl').value;
-    const customerName = `${getOrderJson.order.shipping_address.first_name} ${getOrderJson.order.shipping_address.last_name}`;
-    const cityName = getOrderJson.order.shipping_address.city;
-    const streetAddress = `${getOrderJson.order.shipping_address.address1} ${getOrderJson.order.shipping_address.address2}`;
-    const streetName = streetAddress;
-    const houseNumber = getHouseNumber(streetAddress);
-    const phoneNumber = getOrderJson.order.shipping_address.phone;
-    const orderId = getOrderJson.order.name.substring(1);
-    const shippingMethod = getOrderJson.order.shipping_lines[0].code;
-    let itemsTotalWeight = getOrderJson.order.line_items.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
-    if(itemsTotalWeight > 0){
-        itemsTotalWeight /= 1000;
-    }
-
-    const isPickups = isPickUpsShippingMethod(shippingMethod);
-    let insertShipmentFunction = '';
-    let functionArgs = '';
-
-    if(!isValidPhoneNumber(phoneNumber)){
-        return {
-            'errors': 'Phone Number is invalid'
-        }
-    }
-
-    if(isPickups) {
-        const pickupPoint = orderPickupsData.orderPickupPoint;
-        let pickupPointId = null;
-
-        if(pickupPoint){
-            pickupPointId = pickupPoint.iid;
-        }
-
-        if(pickupPointId === null) {
-            return {
-                'errors': 'No Pickup Point Selected'
-            }
-        }
-
-        functionArgs = {
-            'info': {
-                'ConsigneeAddress': {
-                    'CityName': cityName,
-                    'ContactPerson': customerName,
-                    'CustomerName': customerName,
-                    'HouseNumber': houseNumber,
-                    'Phone1': phoneNumber,
-                    'StreetName': streetName,
-                },
-                'NumberOfPackages': 1,
-                'PickupPointID': pickupPointId,
-                'Reference1': orderId,
-                'UseDefaultShipperAddress': 'true',
-                'Weight': itemsTotalWeight
-            }
-        }
-        insertShipmentFunction = 'InsertPickupsShipment';
-    }else {
-        functionArgs = {
-            'info': {
-                'ConsigneeAddress': {
-                    'CityName': cityName,
-                    'ContactPerson': customerName,
-                    'CustomerName': customerName,
-                    'HouseNumber': houseNumber,
-                    'Phone1': phoneNumber,
-                    'StreetName': streetName,
-                },
-                'NumberOfPackages': 1,
-                'PaymentType': 'PP',
-                'Reference1': orderId,
-                'UseDefaultShipperAddress': 'true',
-                'Weight': itemsTotalWeight
-            }
-        }
-        insertShipmentFunction = 'InsertWbShipment';
-    }
-
-    const authCookieArray = authClient.lastResponseHeaders['set-cookie'][0].split(';');
-    const authCookie = authCookieArray[0];
-
-    const shippingClient = await soap.createClientAsync(webServiceShipUrl);
-    const shippingClientFunction = new Promise(function(resolve) {
-        shippingClient.addHttpHeader('Cookie', authCookie);
-        shippingClient[insertShipmentFunction](functionArgs, function(err, result) {
-            resolve(result[`${insertShipmentFunction}Result`]);
-        });
-    });
-
-    const sendToUps = await shippingClientFunction;
-
-    if(sendToUps === undefined || sendToUps.IsSucceeded === 'false'){
-        return {'errors': sendToUps.LastError.OriginalMessage}
-    }
-
-    return { 'wayBillNumber': sendToUps.TrackingNumber };
 }
 
 async function restApiSendToUps(accessToken, integrationData, getOrderJson, orderPickupsData){
@@ -346,38 +247,14 @@ export default async (req, res) => {
                 continue;
             }
 
-            // TODO: remove SOAP
-            const isRestAvailable = getFieldFromIntegrationData(integrationData,'upsApiUrl') !== undefined && getFieldFromIntegrationData(integrationData,'upsIntegrationPassword') !== 'API Password';
-
-            console.log('isRestAvailable', isRestAvailable);
-            let upsData;
-            let globalAccessToken; // TODO: after remove soap, remove this also
-            if(isRestAvailable){
-                const { isLoggedIn, accessToken } = await getRestApiAccessToken(integrationData);
-
-                globalAccessToken = accessToken;
-
-                if (!isLoggedIn) {
-                    const error = 'Rest API Auth Error';
-                    await saveOrderTagError(shop, orderId, orderTags, error);
-                    output += `${errorsPrefix} ${error}`;
-                    continue;
-                }
-
-                upsData = await restApiSendToUps(accessToken, integrationData, getOrderJson, orderPickupsData);
-
-            } else {
-                const {isLoggedIn, authClient} = await webServiceAuthLogin(integrationData);
-
-                if (!isLoggedIn) {
-                    const error = 'WebService Auth Error';
-                    await saveOrderTagError(shop, orderId, orderTags, error);
-                    output += `${errorsPrefix} ${error}`;
-                    continue;
-                }
-
-                upsData = await webServiceSendToUps(authClient, integrationData, getOrderJson, orderPickupsData);
+            const { isLoggedIn, accessToken } = await getRestApiAccessToken(integrationData);
+            if (!isLoggedIn) {
+                const error = 'Rest API Auth Error';
+                await saveOrderTagError(shop, orderId, orderTags, error);
+                output += `${errorsPrefix} ${error}`;
+                continue;
             }
+            const upsData = await restApiSendToUps(accessToken, integrationData, getOrderJson, orderPickupsData);
 
             if (upsData.errors) {
                 console.log('upsData.errors', upsData.errors);
@@ -398,14 +275,14 @@ export default async (req, res) => {
             output += `Order ${orderName} Sent to UPS`;
 
             if(printLabel){
-                upsData = await restApiPrintLabel(globalAccessToken, integrationData, wayBillNumber, format);
+                const upsPrintLabel = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
 
-                if (upsData.errors) {
-                    output += `${errorsPrefix} ${upsData.errors}`;
+                if (upsPrintLabel.errors) {
+                    output += `${errorsPrefix} ${upsPrintLabel.errors}`;
                     continue;
                 }
 
-                pdfList.push(upsData.response);
+                pdfList.push(upsPrintLabel.response);
             }
         }
 

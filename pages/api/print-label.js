@@ -1,6 +1,5 @@
 const { HOST } = process.env;
-const soap = require('soap');
-const { mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, webServiceAuthLogin, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac } = require('../../server/helper');
+const { mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac } = require('../../server/helper');
 
 async function getWayBillNumber(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -31,39 +30,6 @@ async function getWayBillNumber(shop, orderId){
         console.log('getWayBillNumber Error: ', e);
         return '';
     }
-}
-
-async function webServicePrintLabel(authClient, integrationData, wayBillNumber, format){
-    const webServiceShipUrl = integrationData.find((item) => item.key === 'webServiceShipUrl').value;
-    const insertShipmentFunction = 'GetThermalLabelEX';
-    const functionArgs = {
-        'criteria': {
-            'TrackingNumber': wayBillNumber,
-            'Type': 'Hebrew',
-            'AutoPrint': 1,
-            'Copies': 1,
-            'LabelFormat': format === 'A4' ? 'A4' : 'Thermal',
-        }
-    };
-
-    const authCookieArray = authClient.lastResponseHeaders['set-cookie'][0].split(';');
-    const authCookie = authCookieArray[0];
-
-    const shippingClient = await soap.createClientAsync(webServiceShipUrl);
-    const shippingClientFunction = new Promise(function(resolve) {
-        shippingClient.addHttpHeader('Cookie', authCookie);
-        shippingClient[insertShipmentFunction](functionArgs, function(err, result) {
-            resolve(result[`${insertShipmentFunction}Result`]);
-        });
-    });
-
-    const sendToUps = await shippingClientFunction;
-
-    if(sendToUps === undefined || sendToUps.IsSucceeded === 'false'){
-        return {'errors': sendToUps.LastError.OriginalMessage}
-    }
-
-    return { 'response': sendToUps.File };
 }
 
 export default async (req, res) => {
@@ -123,31 +89,12 @@ export default async (req, res) => {
                 continue;
             }
 
-            // TODO: remove SOAP
-            const isRestAvailable = getFieldFromIntegrationData(integrationData,'upsApiUrl') !== undefined && getFieldFromIntegrationData(integrationData,'upsIntegrationPassword') !== 'API Password';
-
-            console.log('isRestAvailable', isRestAvailable);
-            let upsData;
-            if(isRestAvailable){
-                const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData);
-
-                if (!isLoggedIn) {
-                    output += `${errorsPrefix} REST API Auth Error`;
-                    continue;
-                }
-
-                upsData = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
-
-            } else {
-                const {isLoggedIn, authClient} = await webServiceAuthLogin(integrationData);
-
-                if (!isLoggedIn) {
-                    output += `${errorsPrefix} WebService Auth Error`;
-                    continue;
-                }
-
-                upsData = await webServicePrintLabel(authClient, integrationData, wayBillNumber, format);
+            const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData);
+            if (!isLoggedIn) {
+                output += `${errorsPrefix} REST API Auth Error`;
+                continue;
             }
+            const upsData = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
 
             if (upsData.errors) {
                 output += `${errorsPrefix} ${upsData.errors}`;

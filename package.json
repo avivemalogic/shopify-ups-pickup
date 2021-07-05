@@ -34,7 +34,6 @@
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-jss": "^10.5.0",
-    "soap": "^0.33.0",
     "styled-components": "^5.2.1"
   }
 }

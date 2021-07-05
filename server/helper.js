@@ -125,36 +125,6 @@ async function autoSendToUps(shop, orderId){
     }
 }
 
-async function webServiceAuthLogin(integrationData){
-    const webServiceAuthUrl = integrationData.find((item) => item.key === 'webServiceAuthUrl').value;
-    const webServiceUsername = integrationData.find((item) => item.key === 'webServiceUsername').value;
-    const webServicePassword = integrationData.find((item) => item.key === 'webServicePassword').value;
-    const webServiceLogin = {
-        username: webServiceUsername,
-        password: webServicePassword
-    }
-
-    try {
-        const authClient = await soap.createClientAsync(webServiceAuthUrl);
-
-        const authClientLogin = new Promise(function (resolve) {
-            authClient['Login'](webServiceLogin, function (err, result) {
-                resolve(result.LoginResult);
-            });
-        });
-
-        const isLoggedIn = await authClientLogin;
-
-        return {
-            'isLoggedIn': isLoggedIn,
-            'authClient': authClient
-        }
-    } catch (e) {
-        console.log('webServiceAuthLogin Error: ',e);
-        return {'isLoggedIn': false, 'authClient': false };
-    }
-}
-
 function getFieldFromIntegrationData(integrationData, fieldKey){
     try {
         return integrationData.find((item) => item.key === fieldKey).value;
@@ -421,7 +391,6 @@ module.exports = {
     saveOrderPickupPoint,
     orderIntegrationIsEnabled,
     orderAutomaticSendIsEnabled,
-    webServiceAuthLogin,
     getRestApiAccessToken,
     verifyHmac,
     verifyHmacWebhook,
