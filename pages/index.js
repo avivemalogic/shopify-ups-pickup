@@ -1,4 +1,5 @@
 const { HOST } = process.env;
+const PLUGIN_FIELDS_VERSION = "1.0.1";
 import {
     Button,
     Card,
@@ -27,11 +28,16 @@ class Index extends Component {
             'isChanged': [],
             'upsPickupsType': {},
             'upsPickupsMapType': {},
+            'upsPickupsOpenMapOnLoad': {},
             'enableOrderIntegration': {},
             'webServiceShipUrl': {},
             'webServiceAuthUrl': {},
             'webServiceUsername': {},
             'webServicePassword': {},
+            'upsApiUrl': {},
+            'upsIntegrationUsername': {},
+            'upsIntegrationPassword': {},
+            'upsIntegrationScope': {},
             'orderIntegrationAutomatic': {}
         };
     }
@@ -42,6 +48,7 @@ class Index extends Component {
         let data = '';
 
         if(shop) {
+            // Get Shipping Data
             const response = await fetch(`${HOST}api/get-shipping-data`, {
                 method: 'POST',
                 headers: {
@@ -53,13 +60,34 @@ class Index extends Component {
             const json = await response.json();
 
             data = Object.assign(json, {'shop': shop});
+
+            // New Fields Update
+            const currentFieldsVersion = json.metafields.find((item) => item.key === 'fieldsVersion');
+            if(currentFieldsVersion === undefined || currentFieldsVersion.value !== PLUGIN_FIELDS_VERSION){
+                await fetch(`${HOST}api/set-shipping-data`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({'shop': shop })
+                });
+            }
         }
 
         return {
             data
         }
     }
-    componentDidMount(){
+    async componentDidMount(){
+        const shop = this.props.data.shop;
+
+        if(shop){
+            this.setState({
+                'shop': shop
+            })
+        }
+
         if(this.props.data.metafields){
             this.props.data.metafields.forEach((item) => {
                 this.setState({
@@ -70,12 +98,6 @@ class Index extends Component {
                         'value_type': item.value_type
                     }
                 })
-            })
-        }
-
-        if(this.props.data.shop){
-            this.setState({
-                'shop': this.props.data.shop
             })
         }
     }
@@ -126,6 +148,14 @@ class Index extends Component {
                                 options={upsPickupMapTypeOptions}
                             />
                         </Card>
+                        <SettingToggle
+                            action={{
+                                content: state.upsPickupsOpenMapOnLoad.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                onAction: this.toggleOpenMapOnLoad,
+                            }}
+                            enabled={state.upsPickupsOpenMapOnLoad.value} >
+                            Open Map On Load is <TextStyle variation="strong">{state.upsPickupsOpenMapOnLoad.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                        </SettingToggle>
                     </Layout.AnnotatedSection>
                     <Layout.AnnotatedSection title="Order Integration">
                         <SettingToggle
@@ -179,6 +209,39 @@ class Index extends Component {
                                     value={state.webServicePassword.value}
                                     onChange={this.handleChange('webServicePassword')}
                                     label="Web Service Password"
+                                    type="text"
+                                />
+                            </Card>
+
+                            <Card sectioned>
+                                <TextField
+                                    value={state.upsApiUrl.value}
+                                    onChange={this.handleChange('upsApiUrl')}
+                                    label="REST Api URL"
+                                    type="text"
+                                />
+                            </Card>
+                            <Card sectioned>
+                                <TextField
+                                    value={state.upsIntegrationUsername.value}
+                                    onChange={this.handleChange('upsIntegrationUsername')}
+                                    label="REST Api Username"
+                                    type="text"
+                                />
+                            </Card>
+                            <Card sectioned>
+                                <TextField
+                                    value={state.upsIntegrationPassword.value}
+                                    onChange={this.handleChange('upsIntegrationPassword')}
+                                    label="REST Api Password"
+                                    type="text"
+                                />
+                            </Card>
+                            <Card sectioned>
+                                <TextField
+                                    value={state.upsIntegrationScope.value}
+                                    onChange={this.handleChange('upsIntegrationScope')}
+                                    label="REST Api Scope"
                                     type="text"
                                 />
                             </Card>
@@ -240,6 +303,9 @@ class Index extends Component {
     };
     toggleOrderIntegration = () => {
         this.handleToggle('enableOrderIntegration');
+    };
+    toggleOpenMapOnLoad = () => {
+        this.handleToggle('upsPickupsOpenMapOnLoad');
     };
     toggleOrderIntegrationAutomatic = () => {
         this.handleToggle('orderIntegrationAutomatic');

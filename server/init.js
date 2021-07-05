@@ -19,14 +19,12 @@ async function createPickUpsOptions(shop, accessToken){
     const getShippingDataJson = await getShippingData.json();
 
     const shippingDataMetafields = getShippingDataJson.metafields;
-
     shippingDataFieldsObject.forEach(async (item) => {
         if(shippingDataMetafields !== null){
-            if(shippingDataMetafields.find((field) => field.key === item.key) > -1){
+            if(shippingDataMetafields.find((field) => field.key === item.key) !== undefined){
                 return;
             }
         }
-
         const shippingDataRequestOptions = {
             method: 'POST',
             headers: getShopifyRequestHeaders(accessToken),

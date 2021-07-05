@@ -4,6 +4,7 @@
 
     let upsPickupsType = 'all';
     let upsPickupsMapType = 'test';
+    let upsPickupsOpenMapOnLoad = false
     try {
         const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
             method: 'POST',
@@ -18,6 +19,10 @@
         upsPickupsType = upsPickupsTypeField.value;
         const upsPickupsMapTypeField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsMapType');
         upsPickupsMapType = upsPickupsMapTypeField.value;
+        const upsPickupsOpenMapOnLoadField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsOpenMapOnLoad');
+        if(upsPickupsOpenMapOnLoadField !== undefined){
+            upsPickupsOpenMapOnLoad = upsPickupsOpenMapOnLoadField.value === 'true';
+        }
     } catch (error) {
        console.log(error);
     }
@@ -36,6 +41,13 @@
     const pickupPointInputValue = document.getElementById('CartSpecialInstructions').value;
     if(pickupPointInputValue !== ''){
         pickup_render_description(JSON.parse(pickupPointInputValue));
+    }else if(upsPickupsOpenMapOnLoad) {
+        const onClickInterval = setInterval(function () {
+            if (window.PickupsSDK !== undefined) {
+                window.PickupsSDK.onClick();
+                clearInterval(onClickInterval);
+            }
+        }, 500);
     }
 
     document.body.addEventListener('pickups-after-choosen', async function (e, data) {

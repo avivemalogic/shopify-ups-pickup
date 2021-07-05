@@ -1,6 +1,12 @@
 [
   {
     "namespace": "pickups-options",
+    "key": "fieldsVersion",
+    "value": "1.0.1",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-options",
     "key": "upsPickupsType",
     "value": "all",
     "value_type": "string"
@@ -9,6 +15,12 @@
     "namespace": "pickups-options",
     "key": "upsPickupsMapType",
     "value": "test",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-options",
+    "key": "upsPickupsOpenMapOnLoad",
+    "value": "false",
     "value_type": "string"
   },
   {
@@ -39,6 +51,30 @@
     "namespace": "pickups-integration",
     "key": "webServicePassword",
     "value": "Web Service Password",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "upsApiUrl",
+    "value": "https://newbetaapi.ship.co.il/",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "upsIntegrationUsername",
+    "value": "example@ups.co.il",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "upsIntegrationPassword",
+    "value": "API Password",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "upsIntegrationScope",
+    "value": "API Scope",
     "value_type": "string"
   },
   {

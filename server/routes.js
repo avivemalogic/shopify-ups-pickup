@@ -6,6 +6,7 @@ const router = new Router();
 const bodyParser = require('koa-bodyparser');
 const { verifyToken, getQueryKey } = require("koa-shopify-auth-cookieless");
 const { verifyHmacWebhook, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, saveOrderNote, saveOrderPickupPoint, autoSendToUps } = require('./helper');
+const { createPickUpsOptions } = require('./init');
 const { HOST, API_VERSION,DEBUG_MODE } = process.env;
 
 router.get('/', async (ctx, next) => {
@@ -48,6 +49,18 @@ router.post('/api/save-shipping-data', bodyParser(), async (ctx, next) => {
     ctx.statusCode = 200;
 });
 
+router.post('/api/set-shipping-data', bodyParser(), async (ctx, next) => {
+    const data = ctx.request.body;
+    const shop = data.shop;
+
+    const accessToken = await getAccessToken(shop);
+
+    await createPickUpsOptions(shop, accessToken);
+
+    ctx.body = 'done';
+    ctx.statusCode = 200;
+});
+
 router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;
@@ -67,7 +80,7 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     const dataJson = await response.json();
 
     if(!isPrivate){
-        dataJson.metafields = dataJson.metafields.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType')
+        dataJson.metafields = dataJson.metafields.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad')
     }
 
     ctx.body = dataJson;
@@ -193,6 +206,7 @@ router.post('/api/save-order-tags-error', bodyParser(), async (ctx, next) => {
     const orderTags = data.orderTags.split(',').filter((item) => !item.includes('UPS Error:')).join(',');
     const orderNewTagError = data.orderError;
 
+    const newTag = `${orderTags.substring(0, 40)}, ${orderNewTagError.substring(0, 40)}`;
     const accessToken = await getAccessToken(shop);
 
     const tagsRequestOptions = {
@@ -202,7 +216,7 @@ router.post('/api/save-order-tags-error', bodyParser(), async (ctx, next) => {
             "order":
                 {
                     "id": orderId,
-                    "tags": `${orderTags}, ${orderNewTagError}`
+                    "tags": newTag
                 }
         })
     };

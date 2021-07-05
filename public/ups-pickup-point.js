@@ -73,7 +73,7 @@ async function getOrder(HOST, shop, orderId){
 
 function validatePhoneNumber(phoneNumber){
     if(!phoneNumber) return false;
-    return phoneNumber.replace(/-/g, '').match(/^0(5[^7])[0-9]{7}$/);
+    return phoneNumber.replace(' ','').replace('+972','0').replace(/-/g, '').match(/^0(5[^7])[0-9]{7}$/);
 }
 
 function isValidPhoneNumber(phoneNumber){
@@ -135,6 +135,12 @@ function hidePickUpsButton(text){
     } else {
         let upsPickupsType = 'all';
         let upsPickupsMapType = 'test';
+        let upsPickupsOpenMapOnLoad = false;
+
+        const upsPickupTextElm = document.querySelector('.ups-pickup-text');
+        if(upsPickupTextElm === null) return;
+        upsPickupTextElm.innerHTML = '';
+
         try {
             const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
                 method: 'POST',
@@ -149,6 +155,10 @@ function hidePickUpsButton(text){
             upsPickupsType = upsPickupsTypeField.value;
             const upsPickupsMapTypeField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsMapType');
             upsPickupsMapType = upsPickupsMapTypeField.value;
+            const upsPickupsOpenMapOnLoadField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsOpenMapOnLoad');
+            if(upsPickupsOpenMapOnLoadField !== undefined){
+                upsPickupsOpenMapOnLoad = upsPickupsOpenMapOnLoadField.value === 'true';
+            }
         } catch (error) {
            console.log(error);
         }
@@ -163,13 +173,20 @@ function hidePickUpsButton(text){
         scriptTag.parentNode.insertBefore(pkp, scriptTag);
 
         const orderNotePickupJsonInput = document.getElementById('order_note_pickup_json');
-
-        document.querySelector('.ups-pickup-text').innerHTML = '';
         if(orderNotePickupJsonInput !== null){
             const pkps_location = JSON.parse(orderNotePickupJsonInput.value);
             pickup_render_description(pkps_location);
         }else {
             document.querySelector('.ups-pickups-button').classList.remove('hide');
+
+            if(upsPickupsOpenMapOnLoad) {
+                const onClickInterval = setInterval(function () {
+                    if (window.PickupsSDK !== undefined) {
+                        window.PickupsSDK.onClick();
+                        clearInterval(onClickInterval);
+                    }
+                }, 500);
+            }
         }
 
         document.body.addEventListener('pickups-after-choosen', async function (e, data) {

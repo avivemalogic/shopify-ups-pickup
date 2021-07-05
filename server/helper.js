@@ -4,6 +4,9 @@ const soap = require('soap');
 const crypto = require('crypto');
 const querystring = require('querystring');
 const DB_URL = 'http://api-shopify.emalogic.com';
+const fs = require('fs');
+const { PDFDocument } = require('pdf-lib');
+
 
 function getShopifyRequestHeaders(accessToken){
     return {
@@ -152,6 +155,134 @@ async function webServiceAuthLogin(integrationData){
     }
 }
 
+function getFieldFromIntegrationData(integrationData, fieldKey){
+    try {
+        return integrationData.find((item) => item.key === fieldKey).value;
+    } catch (e){
+        return undefined;
+    }
+}
+
+async function getRestApiAccessToken(integrationData){
+    const apiUrl = getFieldFromIntegrationData(integrationData,'upsApiUrl') + 'Token';
+    const apiUsername = getFieldFromIntegrationData(integrationData,'upsIntegrationUsername');
+    const apiPassword = getFieldFromIntegrationData(integrationData,'upsIntegrationPassword');
+    const apiScope = getFieldFromIntegrationData(integrationData,'upsIntegrationScope');
+
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
+
+    const urlencoded = new URLSearchParams();
+    urlencoded.append("username", apiUsername);
+    urlencoded.append("password", apiPassword);
+    urlencoded.append("scope", apiScope);
+    urlencoded.append("grant_type", "password");
+
+    const requestOptions = {
+        method: 'POST',
+        headers: myHeaders,
+        body: urlencoded,
+        redirect: 'follow'
+    };
+
+    try {
+        const response = await fetch(apiUrl, requestOptions);
+        const data = await response.json();
+
+        if(data['error']){
+            throw data['error'] +' - '+data['error_description'];
+        }
+
+        const accessToken = data['access_token'];
+
+        return {
+            'isLoggedIn': !!accessToken,
+            'accessToken': accessToken
+        }
+    } catch (e) {
+        console.log('getRestApiAccessToken Error: ',e);
+        return {'isLoggedIn': false, 'accessToken': false };
+    }
+}
+
+async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, format){
+    const apiUrl = getFieldFromIntegrationData(integrationData,'upsApiUrl') + 'api/v1/shipments/PrintWBOrderDetails';
+    const functionArgs = {
+        'trackingNumbers': wayBillNumber,
+        'isA4Format': format === 'A4' ? 'True' : 'False'
+    };
+
+    const urlParams = new URLSearchParams(functionArgs);
+
+    const requestOptions = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + accessToken
+        }
+    };
+
+    try {
+        const response = await fetch(apiUrl +'?'+ urlParams, requestOptions);
+        const data = await response.text();
+
+        if(!data){
+            throw 'Api Return Empty Response';
+        }
+
+        if(data['Message']){
+            throw data['Message'] || data['Result']['ErrorMessage'];
+        }
+
+        return { 'response': data };
+
+    } catch (e) {
+        console.log('restApiPrintLabel Error: ',e);
+        return { 'errors': e }
+    }
+}
+
+async function mergePdf(pdfList, format){
+    let pdfFinal,
+        pdfEncodingType;
+    if (pdfList.length > 1) {
+        const mergedPdf = await PDFDocument.create();
+        for (const item of pdfList) {
+            const itemBuffer = Buffer.from(item, 'base64');
+            const pdfBytes = new Uint8Array(itemBuffer);
+            const pdf = await PDFDocument.load(pdfBytes);
+            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+            copiedPages.forEach((page) => {
+                mergedPdf.addPage(page);
+            });
+        }
+
+        pdfFinal = await mergedPdf.save();
+        pdfEncodingType = 'uint8';
+    } else {
+        pdfFinal = pdfList[0];
+        pdfEncodingType = 'base64';
+    }
+
+    const pdfFile = Buffer.from(pdfFinal, pdfEncodingType);
+
+    const pdfDir = 'ups-labels';
+    const serverPdfDir = `./public/${pdfDir}`;
+    const uniqueId = Date.now() * 123
+    const pdfFilename = `ups_${format.toLowerCase()}_${uniqueId}.pdf`;
+
+    if (!fs.existsSync(serverPdfDir)){
+        fs.mkdirSync(serverPdfDir);
+    }
+
+    fs.writeFileSync(`${serverPdfDir}/${pdfFilename}`, pdfFile,'binary');
+
+    return {
+        'output': 'Your Label will be open in a few seconds...',
+        'pdfDownloadFile': `${HOST}${pdfDir}/${pdfFilename}`
+    }
+}
+
 function verifyHmac(requestQuery, hmac, isBulkAction){
     delete requestQuery['hmac'];
     let bodyString = '';
@@ -291,10 +422,14 @@ module.exports = {
     orderIntegrationIsEnabled,
     orderAutomaticSendIsEnabled,
     webServiceAuthLogin,
+    getRestApiAccessToken,
     verifyHmac,
     verifyHmacWebhook,
     getAccessToken,
     insertAccessToken,
     isPickUpsShippingMethod,
-    autoSendToUps
+    autoSendToUps,
+    getFieldFromIntegrationData,
+    restApiPrintLabel,
+    mergePdf
 }

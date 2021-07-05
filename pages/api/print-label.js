@@ -1,9 +1,6 @@
 const { HOST } = process.env;
 const soap = require('soap');
-const fs = require('fs');
-const open = require('open');
-const { PDFDocument } = require('pdf-lib');
-const { webServiceAuthLogin, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac } = require('../../server/helper');
+const { mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, webServiceAuthLogin, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac } = require('../../server/helper');
 
 async function getWayBillNumber(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -126,14 +123,31 @@ export default async (req, res) => {
                 continue;
             }
 
-            const {isLoggedIn, authClient} = await webServiceAuthLogin(integrationData);
+            // TODO: remove SOAP
+            const isRestAvailable = getFieldFromIntegrationData(integrationData,'upsApiUrl') !== undefined && getFieldFromIntegrationData(integrationData,'upsIntegrationPassword') !== 'API Password';
 
-            if (!isLoggedIn) {
-                output += `${errorsPrefix} WebService Auth Error`;
-                continue;
+            console.log('isRestAvailable', isRestAvailable);
+            let upsData;
+            if(isRestAvailable){
+                const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData);
+
+                if (!isLoggedIn) {
+                    output += `${errorsPrefix} REST API Auth Error`;
+                    continue;
+                }
+
+                upsData = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
+
+            } else {
+                const {isLoggedIn, authClient} = await webServiceAuthLogin(integrationData);
+
+                if (!isLoggedIn) {
+                    output += `${errorsPrefix} WebService Auth Error`;
+                    continue;
+                }
+
+                upsData = await webServicePrintLabel(authClient, integrationData, wayBillNumber, format);
             }
-
-            const upsData = await webServicePrintLabel(authClient, integrationData, wayBillNumber, format);
 
             if (upsData.errors) {
                 output += `${errorsPrefix} ${upsData.errors}`;
@@ -145,43 +159,9 @@ export default async (req, res) => {
         }
 
         if (pdfList.length > 0) {
-            let pdfFinal,
-                pdfEncodingType;
-            if (pdfList.length > 1) {
-                const mergedPdf = await PDFDocument.create();
-                for (const item of pdfList) {
-                    const itemBuffer = Buffer.from(item, 'base64');
-                    const pdfBytes = new Uint8Array(itemBuffer);
-                    const pdf = await PDFDocument.load(pdfBytes);
-                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                    copiedPages.forEach((page) => {
-                        mergedPdf.addPage(page);
-                    });
-                }
-
-                pdfFinal = await mergedPdf.save();
-                pdfEncodingType = 'uint8';
-            } else {
-                pdfFinal = pdfList[0];
-                pdfEncodingType = 'base64';
-            }
-
-            const pdfFile = Buffer.from(pdfFinal, pdfEncodingType);
-
-            const pdfDir = 'ups-labels';
-            const serverPdfDir = `./public/${pdfDir}`;
-            const uniqueId = Date.now() * 123
-            const pdfFilename = `ups_${format.toLowerCase()}_${uniqueId}.pdf`;
-
-            if (!fs.existsSync(serverPdfDir)){
-                fs.mkdirSync(serverPdfDir);
-            }
-
-            fs.writeFileSync(`${serverPdfDir}/${pdfFilename}`, pdfFile,'binary');
-
-            res.statusCode = 200;
-            output = 'Your Label will be open in a few seconds...';
-            pdfDownloadFile = `${HOST}${pdfDir}/${pdfFilename}`;
+            const pdfMergeResponse = await mergePdf(pdfList, format);
+            pdfDownloadFile = pdfMergeResponse['pdfDownloadFile'];
+            output = pdfMergeResponse['output'];
         }
     }
     res.statusCode = 200;
