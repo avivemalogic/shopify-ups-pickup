@@ -7,43 +7,46 @@ const shippingDataFieldsObject = require('../data/shipping_data_fields.json')
  * Add Shipping Method Options
  */
 async function createPickUpsOptions(shop, accessToken){
-
-    const getShippingData = await fetch(`${HOST}api/get-shipping-data`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'isPrivate': true})
-    });
-    const getShippingDataJson = await getShippingData.json();
-
-    const shippingDataMetafields = getShippingDataJson.metafields;
-    shippingDataFieldsObject.forEach(async (item) => {
-        if(shippingDataMetafields !== null){
-            if(shippingDataMetafields.find((field) => field.key === item.key) !== undefined){
-                return;
-            }
-        }
-        const shippingDataRequestOptions = {
+    try {
+        const getShippingData = await fetch(`${HOST}api/get-shipping-data`, {
             method: 'POST',
-            headers: getShopifyRequestHeaders(accessToken),
-            body: JSON.stringify({
-                "metafield":
-                    {
-                        "namespace": item.namespace,
-                        "key": item.key,
-                        "value": item.value,
-                        "value_type": item.value_type
-                    }
-            })
-        };
-        try {
-            await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json`, shippingDataRequestOptions);
-        } catch (e){
-            throw new Error(e);
-        }
-    });
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({'shop': shop, 'isPrivate': true})
+        });
+        const getShippingDataJson = await getShippingData.json();
+
+        const shippingDataMetafields = getShippingDataJson.metafields;
+        shippingDataFieldsObject.forEach(async (item) => {
+            if(shippingDataMetafields !== null){
+                if(shippingDataMetafields.find((field) => field.key === item.key) !== undefined){
+                    return;
+                }
+            }
+            const shippingDataRequestOptions = {
+                method: 'POST',
+                headers: getShopifyRequestHeaders(accessToken),
+                body: JSON.stringify({
+                    "metafield":
+                        {
+                            "namespace": item.namespace,
+                            "key": item.key,
+                            "value": item.value,
+                            "value_type": item.value_type
+                        }
+                })
+            };
+            try {
+                await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json`, shippingDataRequestOptions);
+            } catch (e){
+                throw new Error(e);
+            }
+        });
+    } catch (e){
+        throw new Error(e);
+    }
 }
 
 /**

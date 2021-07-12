@@ -1,6 +1,5 @@
 require("dotenv").config();
 const { HOST, SHOPIFY_API_SECRET_KEY, API_VERSION, DEBUG_MODE } = process.env;
-const soap = require('soap');
 const crypto = require('crypto');
 const querystring = require('querystring');
 const DB_URL = 'http://api-shopify.emalogic.com';
@@ -277,8 +276,6 @@ function verifyHmac(requestQuery, hmac, isBulkAction){
     }
 
     bodyString += querystring.stringify(requestQuery);
-
-    console.log('bodyString', bodyString);
 
     const generatedHash = crypto
         .createHmac('sha256', SHOPIFY_API_SECRET_KEY)

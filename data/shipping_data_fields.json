@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.0.1",
+    "value": "1.0.3",
     "value_type": "string"
   },
   {
@@ -24,33 +24,15 @@
     "value_type": "string"
   },
   {
+    "namespace": "pickups-options",
+    "key": "upsPickupsChangePickupPoint",
+    "value": "false",
+    "value_type": "string"
+  },
+  {
     "namespace": "pickups-integration",
     "key": "enableOrderIntegration",
     "value": "true",
-    "value_type": "string"
-  },
-  {
-    "namespace": "pickups-integration",
-    "key": "webServiceShipUrl",
-    "value": "https://beta.ship.co.il/ShipWebServices/ShipWBService.svc?wsdl",
-    "value_type": "string"
-  },
-  {
-    "namespace": "pickups-integration",
-    "key": "webServiceAuthUrl",
-    "value": "https://beta.ship.co.il/ShipWebServices/AuthenticationService.svc?wsdl",
-    "value_type": "string"
-  },
-  {
-    "namespace": "pickups-integration",
-    "key": "webServiceUsername",
-    "value": "example@ups.co.il",
-    "value_type": "string"
-  },
-  {
-    "namespace": "pickups-integration",
-    "key": "webServicePassword",
-    "value": "Web Service Password",
     "value_type": "string"
   },
   {
@@ -75,6 +57,12 @@
     "namespace": "pickups-integration",
     "key": "upsIntegrationScope",
     "value": "API Scope",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "upsIntegrationReference2",
+    "value": "none",
     "value_type": "string"
   },
   {

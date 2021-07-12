@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const PLUGIN_FIELDS_VERSION = "1.0.1";
+const PLUGIN_FIELDS_VERSION = "1.0.3";
 import {
     Button,
     Card,
@@ -29,11 +29,13 @@ class Index extends Component {
             'upsPickupsType': {},
             'upsPickupsMapType': {},
             'upsPickupsOpenMapOnLoad': {},
+            'upsPickupsChangePickupPoint': {},
             'enableOrderIntegration': {},
             'upsApiUrl': {},
             'upsIntegrationUsername': {},
             'upsIntegrationPassword': {},
             'upsIntegrationScope': {},
+            'upsIntegrationReference2': {},
             'orderIntegrationAutomatic': {}
         };
     }
@@ -60,6 +62,22 @@ class Index extends Component {
             // New Fields Update
             const currentFieldsVersion = json.metafields.find((item) => item.key === 'fieldsVersion');
             if(currentFieldsVersion === undefined || currentFieldsVersion.value !== PLUGIN_FIELDS_VERSION){
+                const currentFieldsVersionMetafieldID = currentFieldsVersion.id;
+
+                const fieldsVersionFields = [{
+                    "id": currentFieldsVersionMetafieldID,
+                    "value": PLUGIN_FIELDS_VERSION,
+                    "value_type": "string"
+                }];
+                await fetch(`${HOST}api/save-shipping-data`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({'shop': shop, 'fields': fieldsVersionFields })
+                });
+
                 await fetch(`${HOST}api/set-shipping-data`, {
                     method: 'POST',
                     headers: {
@@ -113,6 +131,15 @@ class Index extends Component {
             {label: 'Test', value: 'test'},
             {label: 'Live', value: 'live'}
         ];
+        const upsIntegrationReference2Options = [
+            {label: 'None', value: 'none'},
+            {label: 'Order ID', value: 'order_id'},
+            {label: 'Customer Name', value: 'customer_name'},
+            {label: 'Customer E-Mail', value: 'email'},
+            {label: 'Customer Phone Number', value: 'phone_number'},
+            {label: 'Pickup Point ID', value: 'pickup_point_id'},
+            {label: 'Pickup Point Name', value: 'pickup_point_name'}
+        ];
 
         if(state.shop === ''){
             return (
@@ -151,6 +178,14 @@ class Index extends Component {
                             }}
                             enabled={state.upsPickupsOpenMapOnLoad.value} >
                             Open Map On Load is <TextStyle variation="strong">{state.upsPickupsOpenMapOnLoad.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                        </SettingToggle>
+                        <SettingToggle
+                            action={{
+                                content: state.upsPickupsChangePickupPoint.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                onAction: this.toggleChangePickupPoint,
+                            }}
+                            enabled={state.upsPickupsChangePickupPoint.value} >
+                            Change Pickup Point is <TextStyle variation="strong">{state.upsPickupsChangePickupPoint.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
                         </SettingToggle>
                     </Layout.AnnotatedSection>
                     <Layout.AnnotatedSection title="Order Integration">
@@ -206,6 +241,14 @@ class Index extends Component {
                                     onChange={this.handleChange('upsIntegrationScope')}
                                     label="REST Api Scope"
                                     type="text"
+                                />
+                            </Card>
+                            <Card sectioned>
+                                <Select
+                                    value={state.upsIntegrationReference2.value}
+                                    onChange={this.handleChange('upsIntegrationReference2')}
+                                    label="Additional Field (Reference2)"
+                                    options={upsIntegrationReference2Options}
                                 />
                             </Card>
                         </div>
@@ -269,6 +312,9 @@ class Index extends Component {
     };
     toggleOpenMapOnLoad = () => {
         this.handleToggle('upsPickupsOpenMapOnLoad');
+    };
+    toggleChangePickupPoint = () => {
+        this.handleToggle('upsPickupsChangePickupPoint');
     };
     toggleOrderIntegrationAutomatic = () => {
         this.handleToggle('orderIntegrationAutomatic');

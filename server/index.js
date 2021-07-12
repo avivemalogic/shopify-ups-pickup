@@ -43,10 +43,14 @@ app.prepare().then(() => {
             async afterAuth(ctx) {
                 const { shop, accessToken } = ctx.state.shopify;
 
-                await insertAccessToken(shop, accessToken);
-                await createPickUpsOptions(shop, accessToken);
-                await addPickupPointScripts(shop, accessToken);
-                await createWebhook('orders/create', 'order-create', shop, accessToken);
+                try {
+                    await insertAccessToken(shop, accessToken);
+                    await createPickUpsOptions(shop, accessToken);
+                    await addPickupPointScripts(shop, accessToken);
+                    await createWebhook('orders/create', 'order-create', shop, accessToken);
+                } catch (e){
+                    throw new Error(e);
+                }
 
                 ctx.redirect(`https://${shop}/admin/apps/pickup-integration`);
             },

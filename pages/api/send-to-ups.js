@@ -88,16 +88,63 @@ function splitPhonePrefix(phoneNumber){
     }
 }
 
+function getCustomerName(order){
+    return `${order.shipping_address.first_name} ${order.shipping_address.last_name}`;
+}
+
+function getPhoneNumber(order){
+    return order.shipping_address.phone;
+}
+
+function getPickupPoint(data){
+    const pickupPoint = data.orderPickupPoint;
+    let id = null;
+    let title = null;
+
+    if(pickupPoint){
+        id = pickupPoint.iid;
+        title = pickupPoint.title;
+    }
+
+    return {
+        'id': id,
+        'title': title
+    }
+}
+
+function getReference2Field(reference2Type, order, orderPickupsData){
+    const pickupPoint = getPickupPoint(orderPickupsData);
+    const pickupPointId = pickupPoint['id'];
+    const pickupPointTitle = pickupPoint['title'];
+
+    switch(reference2Type){
+        case 'order_id':
+            return order.name.replace('#', '');
+        case 'customer_name':
+            return getCustomerName(order);
+        case 'email':
+            return order.email;
+        case 'phone_number':
+            return validatePhoneNumber(getPhoneNumber(order));
+        case 'pickup_point_id':
+            return pickupPointId;
+        case 'pickup_point_name':
+            return pickupPointTitle;
+        default:
+            return '';
+    }
+}
+
 async function restApiSendToUps(accessToken, integrationData, getOrderJson, orderPickupsData){
     let apiUrl = getFieldFromIntegrationData(integrationData,'upsApiUrl') + 'api/v1/shipments/';
     const customerEmail = getOrderJson.order.email;
-    const customerName = `${getOrderJson.order.shipping_address.first_name} ${getOrderJson.order.shipping_address.last_name}`;
+    const customerName = getCustomerName(getOrderJson.order);
     const cityName = getOrderJson.order.shipping_address.city;
     const customerZipcode = getOrderJson.order.shipping_address.zip;
     const streetAddress = `${getOrderJson.order.shipping_address.address1} ${getOrderJson.order.shipping_address.address2}`;
     const streetName = streetAddress;
     const houseNumber = getHouseNumber(streetAddress);
-    const phoneNumber = getOrderJson.order.shipping_address.phone;
+    const phoneNumber = getPhoneNumber(getOrderJson.order);
     const orderId = getOrderJson.order.name.substring(1);
     const shippingMethod = getOrderJson.order.shipping_lines[0].code;
     let itemsTotalWeight = getOrderJson.order.line_items.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
@@ -106,6 +153,9 @@ async function restApiSendToUps(accessToken, integrationData, getOrderJson, orde
     }
 
     const isPickups = isPickUpsShippingMethod(shippingMethod);
+    const reference2Type = getFieldFromIntegrationData(integrationData,'upsIntegrationReference2');
+    const reference2 = getReference2Field(reference2Type, getOrderJson.order, orderPickupsData);
+    const shipmentInstructions = streetAddress;
 
     if(!isValidPhoneNumber(phoneNumber)){
         return {
@@ -125,18 +175,15 @@ async function restApiSendToUps(accessToken, integrationData, getOrderJson, orde
             'ContactEmail': customerEmail
         },
         'Reference1': orderId,
+        'Reference2': reference2,
         'Weight': itemsTotalWeight,
         'UseDefaultShipperAddress': 'true'
     }
 
     if(isPickups) {
         apiUrl += 'insert-pickup-shipment-ex';
-        const pickupPoint = orderPickupsData.orderPickupPoint;
-        let pickupPointId = null;
-
-        if(pickupPoint){
-            pickupPointId = pickupPoint.iid;
-        }
+        const pickupPoint = getPickupPoint(orderPickupsData);
+        const pickupPointId = pickupPoint['id'];
 
         if(pickupPointId === null) {
             return {
@@ -153,6 +200,7 @@ async function restApiSendToUps(accessToken, integrationData, getOrderJson, orde
 
         functionArgs['ConsigneeAddress']['PhonePrefix'] = splitPhoneNumber['prefix'];
         functionArgs['ConsigneeAddress']['Phone'] = splitPhoneNumber['number'];
+        functionArgs['ShipmentInstructions'] = shipmentInstructions;
     }
 
     const requestOptions = {

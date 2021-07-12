@@ -80,7 +80,7 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     const dataJson = await response.json();
 
     if(!isPrivate){
-        dataJson.metafields = dataJson.metafields.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad')
+        dataJson.metafields = dataJson.metafields.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad' || item.key === 'upsPickupsChangePickupPoint')
     }
 
     ctx.body = dataJson;

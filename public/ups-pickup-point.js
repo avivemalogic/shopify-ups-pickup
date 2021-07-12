@@ -31,7 +31,7 @@ async function orderContainWayBillNumber(HOST, shop, orderId){
     let orderSentToUps = false;
     getWaybillNumberJson.metafields.forEach((item) => {
         if(item.key === 'pickups_point_wb'){
-            orderSentToUps = true;
+            orderSentToUps = item.value;
         }
     })
 
@@ -128,6 +128,8 @@ function hidePickUpsButton(text){
         }
     }
 
+    await addTrackingNumberLink();
+
     if(isContainPickupPoint) {
         const pkps_location = JSON.parse(isContainPickupPoint.value);
         pickup_render_description(pkps_location);
@@ -220,5 +222,30 @@ function hidePickUpsButton(text){
     function pickup_render_description(pkps_location){
         const html = "<br /><b>" + pkps_location.title + "</b>&nbsp;(" + pkps_location.iid + ")<br />" + pkps_location.city + ", " + pkps_location.street + "<br /><small>" + pkps_location.zip + "</small>";
         document.querySelector('div.ups-pickups-data').innerHTML = html;
+    }
+
+    async function addTrackingNumberLink(){
+        const wb = await orderContainWayBillNumber(HOST, shop, orderId);
+
+        if(wb) {
+            const html = `<div class="section">
+                <div class="content-box">
+                  <div class="content-box__row text-container pick-ups-wrapper">
+                    <h2 class="heading-2 pick-ups-step__title">Tracking Number</h2>
+                    
+                      <div class="pick-ups-step__description">
+                            <a href="https://site.ship.co.il/?trackNumber=${wb}" target="_blank">${wb}</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <style>
+                .thank-you__additional-content + .section {
+                    padding-top: 1em;
+                }
+                </style>`;
+
+            document.querySelector('[data-step="thank_you"] .step__sections > .section:last-child').insertAdjacentHTML("beforebegin", html);
+        }
     }
 })();
