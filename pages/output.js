@@ -14,6 +14,7 @@ class Output extends Component {
         this.state = {
             'apiKey': API_KEY,
             'shop': '',
+            'orderId': '',
             'output': [],
             'file': null
         };
@@ -24,7 +25,8 @@ class Output extends Component {
         if(getParameters.output){
             this.setState({
                 'output': unescape(getParameters.output.replaceAll('$','#')),
-                'shop': unescape(getParameters.shop)
+                'shop': unescape(getParameters.shop),
+                'orderId': unescape(getParameters.order_id)
             })
 
             if(getParameters.file){
@@ -78,7 +80,8 @@ class Output extends Component {
                         <Button
                             onClick={this.buttonClick}
                         >
-                            Back to Orders
+                            { this.state.orderId ? 'Back to my order' : 'Back to my orders '}
+
                         </Button>
                     </Layout.AnnotatedSection>
                 </Layout>
@@ -91,9 +94,10 @@ class Output extends Component {
             apiKey: this.state.apiKey,
             shopOrigin: this.state.shop,
         });
+        const orderIdPath = this.state.orderId ? '/'+this.state.orderId : '';
         const redirect = Redirect.create(app);
         redirect.dispatch(Redirect.Action.ADMIN_PATH, {
-            path: '/orders'
+            path: '/orders'+orderIdPath
         });
     }
 

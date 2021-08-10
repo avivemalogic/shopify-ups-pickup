@@ -101,7 +101,7 @@ function getPickupPoint(data){
     let id = null;
     let title = null;
 
-    if(pickupPoint){
+    if(pickupPoint !== null){
         id = pickupPoint.iid;
         title = pickupPoint.title;
     }
@@ -244,6 +244,7 @@ export default async (req, res) => {
     const isBulkAction = req.query['ids[]'] !== undefined;
     let orderIds = isBulkAction ? req.query['ids[]'] : req.query.id;
     const requestQuery = req.query;
+    const orderIdDirectAdminPage = isBulkAction ? '' : req.query.id;
     const printLabel = req.query.print_label === 'true';
     const format = req.query.format;
     let output = '';
@@ -345,8 +346,8 @@ export default async (req, res) => {
     res.setHeader('Content-Type', 'text/html');
 
     if(pdfDownloadFile) {
-        res.redirect(`/output?output=${output}&shop=${shop}&file=${pdfDownloadFile}`);
+        res.redirect(`/output?output=${output}&shop=${shop}&order_id=${orderIdDirectAdminPage}&file=${pdfDownloadFile}`);
     }else {
-        res.redirect(`/output?output=${output}&shop=${shop}`);
+        res.redirect(`/output?output=${output}&shop=${shop}&order_id=${orderIdDirectAdminPage}`);
     }
 }

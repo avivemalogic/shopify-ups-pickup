@@ -39,6 +39,7 @@ export default async (req, res) => {
     const isBulkAction = req.query['ids[]'] !== undefined;
     let orderIds = isBulkAction ? req.query['ids[]'] : req.query.id;
     const requestQuery = req.query;
+    const orderIdDirectAdminPage = isBulkAction ? '' : req.query.id;
     let output = '';
     let pdfDownloadFile = '';
 
@@ -113,5 +114,6 @@ export default async (req, res) => {
     }
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html');
-    res.redirect(`/output?output=${output}&shop=${shop}&file=${pdfDownloadFile}`);
+
+    res.redirect(`/output?output=${output}&shop=${shop}&file=${pdfDownloadFile}&order_id=${orderIdDirectAdminPage}`);
 }
