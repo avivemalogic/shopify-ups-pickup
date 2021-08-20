@@ -1,0 +1,33 @@
+.message-container {
+    text-align: center;
+    font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+    font-size: 14px
+}
+.message-container .message-wrapper {
+    padding: 2rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: var(--p-card-shadow, 0 0 0 1px rgba(63, 63, 68, 0.05), 0 1px 3px 0 rgba(63, 63, 68, 0.15));
+    outline: 0.1rem solid transparent;
+    max-width: 500px;
+    margin: 15px auto 25px;
+    text-align: left;
+}
+.message-container button {
+    position: relative;
+    margin: 0;
+    font-weight: bold;
+    padding: 0.7rem 1.6rem;
+    background: #fff;
+    border-radius: 5px;
+    border: 1px solid rgba(186, 191, 195, 1);
+    outline: 0.1rem solid transparent;
+    text-align: center;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.message-container button:hover { background: #f6f6f7; }

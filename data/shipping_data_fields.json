@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.0.3",
+    "value": "1.0.4",
     "value_type": "string"
   },
   {
@@ -68,6 +68,18 @@
   {
     "namespace": "pickups-integration",
     "key": "orderIntegrationAutomatic",
+    "value": "false",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "fulfillOrderItems",
+    "value": "false",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "fulfillOrderItemsNotify",
     "value": "false",
     "value_type": "string"
   }]

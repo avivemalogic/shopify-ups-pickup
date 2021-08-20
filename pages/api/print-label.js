@@ -69,9 +69,9 @@ export default async (req, res) => {
                 continue;
             }
 
-            const orderName = getOrderJson.order.name.replace('#', '$');
+            const orderName = getOrderJson.order.name;
 
-            const errorsPrefix = `Cant send order ${orderName} to Ups - `;
+            const errorsPrefix = `Cant print order ${orderName} - `;
 
             const wayBillNumber = await getWayBillNumber(shop, orderId);
 
@@ -109,11 +109,21 @@ export default async (req, res) => {
         if (pdfList.length > 0) {
             const pdfMergeResponse = await mergePdf(pdfList, format);
             pdfDownloadFile = pdfMergeResponse['pdfDownloadFile'];
-            output = pdfMergeResponse['output'];
+            output += pdfMergeResponse['output'];
         }
     }
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/html');
 
-    res.redirect(`/output?output=${output}&shop=${shop}&file=${pdfDownloadFile}&order_id=${orderIdDirectAdminPage}`);
+    const backButtonText = isBulkAction ? 'Back to my orders' : 'Back to my order';
+    let messageContent = output;
+    let outputScripts;
+    if(pdfDownloadFile){
+        messageContent += `<br/>You can also <a href="${pdfDownloadFile}" target="_blank">Click Here to open label</a>`;
+        outputScripts = `<script>setTimeout(function(){ const newTab = window.open('${pdfDownloadFile}', '_blank'); if(newTab !== null){ newTab.focus(); } }, 3000)</script>`;
+    }
+
+    const outputHtml = `${outputScripts}<link rel="stylesheet" href="../api-output.css"><div class="message-container"><div class="message-wrapper">${messageContent}</div><button onClick="window.history.back();">${backButtonText}</button></div>`;
+
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'text/html');
+    res.end(outputHtml);
 }

@@ -199,6 +199,62 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
     ctx.statusCode = 200;
 })
 
+router.post('/api/fullfill-order-items', bodyParser(), async (ctx, next) => {
+    const data = ctx.request.body;
+    const shop = data.shop;
+    const orderId = data.orderId;
+    const wayBillNumber = data.wayBillNumber;
+    const customerNotify = data.customerNotify;
+    let output;
+
+    const accessToken = await getAccessToken(shop);
+
+    try {
+        const locationRequestOptions = {
+            method: 'GET',
+            headers: getShopifyRequestHeaders(accessToken)
+        };
+        const locationsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/locations.json`, locationRequestOptions);
+        const locationsJson = await locationsResponse.json();
+        const locationId = locationsJson.locations[0]['id'];
+
+        const requestOptions = {
+            method: 'POST',
+            headers: getShopifyRequestHeaders(accessToken),
+            body: JSON.stringify({
+                "fulfillment": {
+                    "location_id": locationId,
+                    "notify_customer": customerNotify,
+                    "tracking_number": wayBillNumber,
+                    "tracking_company": "ups-ship",
+                    "tracking_urls": [
+                        "https://site.ship.co.il/?trackNumber="+wayBillNumber
+                    ]
+                }
+            })
+        };
+
+        const fulfillmentsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/fulfillments.json`, requestOptions);
+
+        if(DEBUG_MODE === 'true'){
+            console.log(fulfillmentsResponse);
+        }
+
+        output = await fulfillmentsResponse.json();
+
+    } catch (e){
+        console.log('Fulfillment Error: '+e);
+
+        output = {
+            'errors': e
+        };
+    }
+
+
+    ctx.body = output;
+    ctx.statusCode = 200;
+})
+
 router.post('/api/save-order-tags-error', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;

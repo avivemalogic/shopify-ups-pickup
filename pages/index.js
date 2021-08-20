@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const PLUGIN_FIELDS_VERSION = "1.0.3";
+const PLUGIN_FIELDS_VERSION = "1.0.4";
 import {
     Button,
     Card,
@@ -31,6 +31,8 @@ class Index extends Component {
             'upsPickupsOpenMapOnLoad': {},
             'upsPickupsChangePickupPoint': {},
             'enableOrderIntegration': {},
+            'fulfillOrderItems': {},
+            'fulfillOrderItemsNotify': {},
             'upsApiUrl': {},
             'upsIntegrationUsername': {},
             'upsIntegrationPassword': {},
@@ -254,6 +256,35 @@ class Index extends Component {
                         </div>
                     </Layout.AnnotatedSection>
 
+                    { state.enableOrderIntegration.value === 'true'
+                        ?
+                        <Layout.AnnotatedSection title="Fulfill Order Items">
+                            <SettingToggle
+                                action={{
+                                    content: state.fulfillOrderItems.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                    onAction: this.toggleFulfillOrderItems,
+                                }}
+                                enabled={state.fulfillOrderItems.value} >
+                                Automatic fulfill order items is <TextStyle variation="strong">{state.fulfillOrderItems.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                            </SettingToggle>
+
+                            <div style={{display: state.fulfillOrderItems.value === 'true' ? 'block' : 'none' }}>
+
+                                <div style={{margin: '2rem 0'}}>
+                                    <SettingToggle
+                                        action={{
+                                            content: state.fulfillOrderItemsNotify.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                            onAction: this.toggleFulfillOrderItemsNotify,
+                                        }}
+                                        enabled={state.fulfillOrderItemsNotify.value} >
+                                        Notify customer is <TextStyle variation="strong">{state.fulfillOrderItemsNotify.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                                    </SettingToggle>
+                                </div>
+                            </div>
+                        </Layout.AnnotatedSection>
+                        : ''
+                    }
+
                     { state.isLoading ? <div style={{height: '100px'}}><Frame><Loading/></Frame></div> : ''}
 
                     <Layout.AnnotatedSection>
@@ -318,6 +349,12 @@ class Index extends Component {
     };
     toggleOrderIntegrationAutomatic = () => {
         this.handleToggle('orderIntegrationAutomatic');
+    };
+    toggleFulfillOrderItems = () => {
+        this.handleToggle('fulfillOrderItems');
+    };
+    toggleFulfillOrderItemsNotify = () => {
+        this.handleToggle('fulfillOrderItemsNotify');
     };
     handleToggle = (fieldName) => {
         const newObject = this.state[fieldName];

@@ -40,6 +40,19 @@ async function saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags)
     return await response.json();
 }
 
+async function fullfillOrderItems(shop, orderId, wayBillNumber, customerNotify){
+    const response = await fetch(`${HOST}api/fullfill-order-items`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'customerNotify': customerNotify})
+    });
+
+    return await response.json();
+}
+
 async function saveOrderTagError(shop, orderId, orderTags, error){
     if(orderTags.includes(error)){
         return true;
@@ -237,6 +250,14 @@ async function restApiSendToUps(accessToken, integrationData, getOrderJson, orde
     return { 'wayBillNumber': trackingNumber };
 }
 
+function isFulfillOrderItemsEnabled(integrationData){
+    return getFieldFromIntegrationData(integrationData,'fulfillOrderItems') === 'true';
+}
+
+function isFulfillOrderItemsCustomerNotify(integrationData){
+    return getFieldFromIntegrationData(integrationData,'fulfillOrderItemsNotify') === 'true';
+}
+
 export default async (req, res) => {
     const shop = req.query.shop;
     const hmac = req.query.hmac;
@@ -249,7 +270,6 @@ export default async (req, res) => {
     const format = req.query.format;
     let output = '';
     let pdfDownloadFile;
-
 
     if(!hmacVerified && verifyHmac(requestQuery, hmac, isBulkAction) === false){
         output = 'Auth Error';
@@ -274,7 +294,7 @@ export default async (req, res) => {
                 continue;
             }
 
-            const orderName = getOrderJson.order.name.replace('#', '$');
+            const orderName = getOrderJson.order.name;
             const orderTags = getOrderJson.order.tags;
             const errorsPrefix = `Cant send order ${orderName} to Ups - `;
 
@@ -321,7 +341,14 @@ export default async (req, res) => {
                 continue;
             }
 
-            output += `Order ${orderName} Sent to UPS`;
+            if(isFulfillOrderItemsEnabled(integrationData)) {
+                const fulfillResponse = await fullfillOrderItems(shop, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
+                if (fulfillResponse.errors) {
+                    output += `${errorsPrefix} ${fulfillResponse.errors}`;
+                }
+            }
+
+            output += `Order ${orderName} Sent to UPS `;
 
             if(printLabel){
                 const upsPrintLabel = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
@@ -338,16 +365,21 @@ export default async (req, res) => {
         if (pdfList.length > 0) {
             const pdfMergeResponse = await mergePdf(pdfList, format);
             pdfDownloadFile = pdfMergeResponse['pdfDownloadFile'];
-            output = pdfMergeResponse['output'];
+            output += '<br/>'+pdfMergeResponse['output'];
         }
     }
 
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/html');
-
-    if(pdfDownloadFile) {
-        res.redirect(`/output?output=${output}&shop=${shop}&order_id=${orderIdDirectAdminPage}&file=${pdfDownloadFile}`);
-    }else {
-        res.redirect(`/output?output=${output}&shop=${shop}&order_id=${orderIdDirectAdminPage}`);
+    const backButtonText = isBulkAction ? 'Back to my orders' : 'Back to my order';
+    let messageContent = output;
+    let outputScripts;
+    if(pdfDownloadFile){
+        messageContent += `<br/>You can also <a href="${pdfDownloadFile}" target="_blank">Click Here to open label</a>`;
+        outputScripts = `<script>setTimeout(function(){ const newTab = window.open('${pdfDownloadFile}', '_blank'); if(newTab !== null){ newTab.focus(); } }, 3000)</script>`;
     }
+
+    const outputHtml = `${outputScripts}<link rel="stylesheet" href="../api-output.css"><div class="message-container"><div class="message-wrapper">${messageContent}</div><button onClick="window.history.back();">${backButtonText}</button></div>`;
+
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'text/html');
+    res.end(outputHtml);
 }

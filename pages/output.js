@@ -30,7 +30,6 @@ class Output extends Component {
             })
 
             if(getParameters.file){
-                console.log(getParameters.file);
                 this.setState({
                     'file': unescape(getParameters.file),
                     'output': 'Your label will be open automatically in a few seconds...'
