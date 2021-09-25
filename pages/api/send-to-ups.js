@@ -84,7 +84,9 @@ function isValidPhoneNumber(phoneNumber){
 
 function validatePhoneNumber(phoneNumber){
     try {
-        return phoneNumber.replace(' ', '').replace('+972', '0').replace(/-/g, '').match(/^0(5[^7])[0-9]{7}$/)[0];
+        const validNumber = phoneNumber.replace(' ', '').replace('+972', '0').replace(/-/g, '').match(/^0(5[^7])[0-9]{7}$/);
+        if(validNumber === null) return false;
+        return validNumber[0];
     } catch (e){
         return phoneNumber;
     }
@@ -341,14 +343,14 @@ export default async (req, res) => {
                 continue;
             }
 
+            output += `Order ${orderName} Sent to UPS `;
+
             if(isFulfillOrderItemsEnabled(integrationData)) {
                 const fulfillResponse = await fullfillOrderItems(shop, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
                 if (fulfillResponse.errors) {
-                    output += `${errorsPrefix} ${fulfillResponse.errors}`;
+                    output += `<br /> ${fulfillResponse.errors}`;
                 }
             }
-
-            output += `Order ${orderName} Sent to UPS `;
 
             if(printLabel){
                 const upsPrintLabel = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
@@ -371,7 +373,7 @@ export default async (req, res) => {
 
     const backButtonText = isBulkAction ? 'Back to my orders' : 'Back to my order';
     let messageContent = output;
-    let outputScripts;
+    let outputScripts = '';
     if(pdfDownloadFile){
         messageContent += `<br/>You can also <a href="${pdfDownloadFile}" target="_blank">Click Here to open label</a>`;
         outputScripts = `<script>setTimeout(function(){ const newTab = window.open('${pdfDownloadFile}', '_blank'); if(newTab !== null){ newTab.focus(); } }, 3000)</script>`;

@@ -115,7 +115,7 @@ export default async (req, res) => {
 
     const backButtonText = isBulkAction ? 'Back to my orders' : 'Back to my order';
     let messageContent = output;
-    let outputScripts;
+    let outputScripts = '';
     if(pdfDownloadFile){
         messageContent += `<br/>You can also <a href="${pdfDownloadFile}" target="_blank">Click Here to open label</a>`;
         outputScripts = `<script>setTimeout(function(){ const newTab = window.open('${pdfDownloadFile}', '_blank'); if(newTab !== null){ newTab.focus(); } }, 3000)</script>`;

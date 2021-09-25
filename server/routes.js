@@ -216,6 +216,9 @@ router.post('/api/fullfill-order-items', bodyParser(), async (ctx, next) => {
         };
         const locationsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/locations.json`, locationRequestOptions);
         const locationsJson = await locationsResponse.json();
+        if(locationsJson.locations.length > 1){
+            throw 'because you are managing more than one warehouse, the fulfillment operation must be completed manually!';
+        }
         const locationId = locationsJson.locations[0]['id'];
 
         const requestOptions = {

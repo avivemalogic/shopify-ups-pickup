@@ -178,7 +178,8 @@ async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, fo
     const apiUrl = getFieldFromIntegrationData(integrationData,'upsApiUrl') + 'api/v1/shipments/PrintWBOrderDetails';
     const functionArgs = {
         'trackingNumbers': wayBillNumber,
-        'isA4Format': format === 'A4' ? 'True' : 'False'
+        'isA4Format': format === 'A4' ? 'True' : 'False',
+        'printPickingList': 'false'
     };
 
     const urlParams = new URLSearchParams(functionArgs);
