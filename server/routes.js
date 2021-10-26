@@ -14,6 +14,8 @@ router.get('/', async (ctx, next) => {
     const token = await getAccessToken(shop);
     ctx.state = { shopify: { shop: shop, accessToken: token } };
     await verifyToken(ctx, next);
+
+    await createPickUpsOptions(shop, token);
 });
 
 router.post('/api/save-shipping-data', bodyParser(), async (ctx, next) => {
@@ -160,6 +162,7 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
     const orderId = data.orderId;
     const wayBillNumber = data.wayBillNumber;
     const orderTags = data.orderTags.split(',').filter((item) => !item.includes('UPS Error:')).join(',');
+    const orderWeight = data.orderWeight+' Kg';
 
     const accessToken = await getAccessToken(shop);
 
@@ -186,7 +189,7 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
             "order":
                 {
                     "id": orderId,
-                    "tags": `${orderTags}, Sent To UPS, ${wayBillNumber}`
+                    "tags": `${orderTags}, Sent To UPS, ${wayBillNumber}, ${orderWeight}`
                 }
         })
     };
@@ -196,6 +199,82 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
         console.log(tagsResponse);
     }
     ctx.body = await tagsResponse.json();
+    ctx.statusCode = 200;
+})
+
+router.post('/api/save-order-leadid', bodyParser(), async (ctx, next) => {
+    const data = ctx.request.body;
+    const shop = data.shop;
+    const orderId = data.orderId;
+    const leadId = data.leadId;
+    const orderTags = data.orderTags.split(',').filter((item) => !item.includes('UPS Error:')).join(',');
+
+    const accessToken = await getAccessToken(shop);
+
+    const requestOptions = {
+        method: 'POST',
+        headers: getShopifyRequestHeaders(accessToken),
+        body: JSON.stringify({
+            "metafield":
+                {
+                    "namespace": "ups_pickup",
+                    "key": "pickups_point_lead_id",
+                    "value": leadId,
+                    "value_type": "string"
+                }
+        })
+    };
+
+    await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
+
+    const tagsRequestOptions = {
+        method: 'PUT',
+        headers: getShopifyRequestHeaders(accessToken),
+        body: JSON.stringify({
+            "order":
+                {
+                    "id": orderId,
+                    "tags": `${orderTags}, ${leadId}`
+                }
+        })
+    };
+
+    const tagsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, tagsRequestOptions);
+    if(DEBUG_MODE === 'true'){
+        console.log(tagsResponse);
+    }
+    ctx.body = await tagsResponse.json();
+    ctx.statusCode = 200;
+})
+
+router.post('/api/save-order-weight', bodyParser(), async (ctx, next) => {
+    const data = ctx.request.body;
+    const shop = data.shop;
+    const orderId = data.orderId;
+    const orderWeight = data.orderWeight;
+
+    const accessToken = await getAccessToken(shop);
+
+    const requestOptions = {
+        method: 'POST',
+        headers: getShopifyRequestHeaders(accessToken),
+        body: JSON.stringify({
+            "metafield":
+                {
+                    "namespace": "ups_pickup",
+                    "key": "pickups_point_order_weight",
+                    "value": orderWeight,
+                    "value_type": "string"
+                }
+        })
+    };
+
+    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
+
+    if(DEBUG_MODE === 'true'){
+        console.log(response);
+    }
+    ctx.body = await response.json();
     ctx.statusCode = 200;
 })
 

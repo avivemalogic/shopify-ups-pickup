@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod } = require('../../server/helper');
+const { updatedMetafields, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -14,8 +14,8 @@ async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberJson = await getWaybillNumberResponse.json();
 
     let orderSentToUps = false;
-    let orderPickupPoint = '';
     let orderLeadId = '';
+    let orderWeight = '';
     getWaybillNumberJson.metafields.forEach((item) => {
         if(item.key === 'pickups_point_wb'){
             orderSentToUps = true;
@@ -23,12 +23,13 @@ async function getOrderPickupsData(shop, orderId){
         if(item.key === 'pickups_point_lead_id'){
             orderLeadId = item.value
         }
-        if(item.key === 'pickups_point_json'){
-            orderPickupPoint = JSON.parse(item.value)
+
+        if(item.key === 'pickups_point_order_weight'){
+            orderWeight = item.value
         }
     })
 
-    return { 'orderSentToUps': orderSentToUps, 'orderPickupPoint': orderPickupPoint, 'orderLeadId': orderLeadId};
+    return { 'orderSentToUps': orderSentToUps, 'orderLeadId': orderLeadId, 'orderWeight': orderWeight};
 }
 
 async function saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight){
@@ -39,19 +40,6 @@ async function saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({'shop': shop, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'orderTags': orderTags, 'orderWeight': orderWeight})
-    });
-
-    return await response.json();
-}
-
-async function saveLeadIdOnOrder(shop, orderId, leadId, orderTags, orderWeight){
-    const response = await fetch(`${HOST}api/save-order-leadid`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'leadId': leadId, 'orderTags': orderTags})
     });
 
     return await response.json();
@@ -187,83 +175,28 @@ function getOrderWeight(integrationData, orderItems){
     return defaultWeight;
 }
 
-async function restApiSendToUps(accessToken, integrationData, getOrderJson, orderPickupsData){
-    const apiHost = getFieldFromIntegrationData(integrationData,'upsCreateApiUrl');
+async function restApiImportWaybillFromLeadId(accessToken, integrationData, getOrderJson, orderPickupsData){
+    let apiUrl = getFieldFromIntegrationData(integrationData,'upsCreateApiUrl') + 'api/v1/easyship/get-leads-track-numbers';
+    const leadId = orderPickupsData.orderLeadId;
 
-    if(!apiHost || apiHost === 'X'){
-        return {
-            'errors': 'REST Create Api URL is empty'
-        }
-    }
-
-    const apiUrl = apiHost + 'api/v1/shipment/insert-domestic-wb-by-customer';
-    const customerEmail = getOrderJson.order.email;
-    const customerName = getCustomerName(getOrderJson.order);
-    const cityName = getOrderJson.order.shipping_address.city;
-    const customerZipcode = getOrderJson.order.shipping_address.zip;
-    const streetAddress = `${getOrderJson.order.shipping_address.address1} ${getOrderJson.order.shipping_address.address2}`;
-    const streetName = streetAddress;
-    const houseNumber = getHouseNumber(streetAddress);
-    const phoneNumber = getPhoneNumber(getOrderJson.order);
-    const orderId = getOrderJson.order.name.substring(1);
-    const shippingMethod = getOrderJson.order.shipping_lines[0].code;
-    const itemsTotalWeight = getOrderWeight(integrationData, getOrderJson.order.line_items);
-
-    const isPickups = isPickUpsShippingMethod(shippingMethod);
-    const reference2Type = getFieldFromIntegrationData(integrationData,'upsIntegrationReference2');
-    const reference2 = getReference2Field(reference2Type, getOrderJson.order, orderPickupsData);
-    const shipmentInstructions = streetAddress;
-
-    if(!isValidPhoneNumber(phoneNumber)){
-        return {
-            'errors': 'Phone Number is invalid'
-        }
-    }
 
     let functionArgs = {
-        'NumberOfPackages': 1,
-        'ConsigneeAddress': {
-            'ContactPerson': customerName,
-            'CustomerName': customerName,
-            'CityName': cityName,
-            'HouseNumber': houseNumber,
-            'StreetName': streetName,
-            'Phone1': validatePhoneNumber(phoneNumber),
-            'Phone2': validatePhoneNumber(phoneNumber),
-            'ZipCode': customerZipcode,
-            'ContactEmail': customerEmail
-        },
-        'ShipmentInstructions': shipmentInstructions,
-        'Reference1': orderId,
-        'Reference2': reference2,
-        'Weight': itemsTotalWeight,
-        'UseDefaultShipperAddress': 'true'
+        'model.leadIds': leadId
     }
 
-    if (isPickups) {
-        const pickupPoint = getPickupPoint(orderPickupsData);
-        const pickupPointId = pickupPoint['id'];
-
-        if (!pickupPointId) {
-            return {
-                'errors': 'No Pickup Point Selected'
-            }
-        }
-        functionArgs['PickupPointID'] = pickupPointId;
-    }
+    const params = new URLSearchParams(functionArgs).toString();
 
     const requestOptions = {
-        method: 'POST',
+        method: 'GET',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + accessToken
-        },
-        body: JSON.stringify(functionArgs)
+        }
     };
 
-    let trackingNumber,leadId;
+    let trackingNumber;
     try {
-        const response = await fetch(apiUrl, requestOptions);
+        const response = await fetch(apiUrl+'?'+params, requestOptions);
 
         const data = await response.json();
 
@@ -271,24 +204,21 @@ async function restApiSendToUps(accessToken, integrationData, getOrderJson, orde
             throw 'Api Return Empty Response';
         }
 
-        if (data['Message'] || data['ErrorCode'] > 0) {
+        if(data['Message'] || data['ErrorCode'] > 0){
             throw data['Message'] || data['ErrorMessage'];
         }
 
-        if (data['LeadId']) {
-            leadId = data['LeadId']
-        } else {
-            if (!data['TrackingNumber']) {
-                throw 'Tracking Number Not Found';
-            }
-            trackingNumber = data['TrackingNumber'];
+        if (!data[0]['TrackNumber']) {
+            throw 'Tracking Number Not Found';
         }
+        trackingNumber = data[0]['TrackNumber'];
+
     } catch (e) {
-        console.log('restApiSendToUps Error: ',e);
+        console.log('restApiImportWaybillFromLeadId Error: ',e);
         return { 'errors': e }
     }
 
-    return { 'wayBillNumber': trackingNumber, 'leadId': leadId };
+    return { 'wayBillNumber': trackingNumber };
 }
 
 function isFulfillOrderItemsEnabled(integrationData){
@@ -306,10 +236,7 @@ export default async (req, res) => {
     const isBulkAction = req.query['ids[]'] !== undefined;
     let orderIds = isBulkAction ? req.query['ids[]'] : req.query.id;
     const requestQuery = req.query;
-    const printLabel = req.query.print_label === 'true';
-    const format = req.query.format;
     let output = '';
-    let pdfDownloadFile;
 
     if(!hmacVerified && verifyHmac(requestQuery, hmac, isBulkAction) === false){
         output = 'Auth Error';
@@ -323,7 +250,6 @@ export default async (req, res) => {
             orderIds = [orderIds];
         }
 
-        let pdfList = [];
         for (let i = 0, orderIdsLength = orderIds.length; i < orderIdsLength; ++i) {
             const orderId = orderIds[i];
 
@@ -338,15 +264,16 @@ export default async (req, res) => {
 
             const orderName = getOrderJson.order.name;
             const orderTags = getOrderJson.order.tags;
-            const errorsPrefix = `Cant send order ${orderName} to Ups - `;
+            const errorsPrefix = `Cant import waybill for order ${orderName} - `;
 
             const orderPickupsData = await getOrderPickupsData(shop, orderId);
             if (orderPickupsData.orderSentToUps) {
                 output += `Order ${orderName} Already Sent to Ups`;
                 continue;
             }
-            if (orderPickupsData.orderLeadId) {
-                output += `Lead already created for order ${orderName}`;
+
+            if(!orderPickupsData.orderLeadId){
+                output += `Lead Id not found for order ${orderName}`;
                 continue;
             }
 
@@ -369,7 +296,7 @@ export default async (req, res) => {
                 output += `${errorsPrefix} ${error}`;
                 continue;
             }
-            const upsData = await restApiSendToUps(accessToken, integrationData, getOrderJson, orderPickupsData);
+            const upsData = await restApiImportWaybillFromLeadId(accessToken, integrationData, getOrderJson, orderPickupsData);
 
             if (upsData.errors) {
                 console.log('upsData.errors', upsData.errors);
@@ -378,75 +305,32 @@ export default async (req, res) => {
                 continue;
             }
 
-            const orderWeight = getOrderWeight(integrationData, getOrderJson.order.line_items);
+            const wayBillNumber = upsData.wayBillNumber;
+            const orderWeight = orderPickupsData.orderWeight;
 
-            await saveOrderWeight(shop, orderId, orderWeight);
+            const response = await saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight);
+            if (response.errors) {
+                await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
+                output += `${errorsPrefix} ${response.errors}`;
+                continue;
+            }
 
-            if(upsData.leadId) {
-                const leadId = upsData.leadId;
+            output += `Order ${orderName} Sent to UPS `;
 
-                const response = await saveLeadIdOnOrder(shop, orderId, leadId, orderTags, orderWeight);
-                if (response.errors) {
-                    await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
-                    output += `${errorsPrefix} ${response.errors}`;
-                    continue;
-                }
-
-                output += `Order ${orderName} Sent - New lead created `;
-            }else{
-                const wayBillNumber = upsData.wayBillNumber;
-
-                const response = await saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight);
-                if (response.errors) {
-                    await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
-                    output += `${errorsPrefix} ${response.errors}`;
-                    continue;
-                }
-
-                output += `Order ${orderName} Sent to UPS `;
-
-                if(isFulfillOrderItemsEnabled(integrationData)) {
-                    const fulfillResponse = await fullfillOrderItems(shop, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
-                    if (fulfillResponse.errors) {
-                        output += `<br /> ${fulfillResponse.errors}`;
-                    }
-                }
-
-                if(printLabel){
-                    const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData, 'print');
-                    if (!isLoggedIn) {
-                        output += `${errorsPrefix} Print API Auth Error`;
-                        continue;
-                    }
-
-                    const upsPrintLabel = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
-
-                    if (upsPrintLabel.errors) {
-                        output += `${errorsPrefix} ${upsPrintLabel.errors}`;
-                        continue;
-                    }
-
-                    pdfList.push(upsPrintLabel.response);
+            if(isFulfillOrderItemsEnabled(integrationData)) {
+                const fulfillResponse = await fullfillOrderItems(shop, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
+                if (fulfillResponse.errors) {
+                    output += `<br /> ${fulfillResponse.errors}`;
                 }
             }
         }
 
-        if (pdfList.length > 0) {
-            const pdfMergeResponse = await mergePdf(pdfList, format);
-            pdfDownloadFile = pdfMergeResponse['pdfDownloadFile'];
-            output += '<br/>'+pdfMergeResponse['output'];
-        }
     }
 
     const backButtonText = isBulkAction ? 'Back to my orders' : 'Back to my order';
-    let messageContent = output;
-    let outputScripts = '';
-    if(pdfDownloadFile){
-        messageContent += `<br/>You can also <a href="${pdfDownloadFile}" target="_blank">Click Here to open label</a>`;
-        outputScripts = `<script>setTimeout(function(){ const newTab = window.open('${pdfDownloadFile}', '_blank'); if(newTab !== null){ newTab.focus(); } }, 3000)</script>`;
-    }
+    const messageContent = output;
 
-    const outputHtml = `${outputScripts}<link rel="stylesheet" href="../api-output.css"><div class="message-container"><div class="message-wrapper">${messageContent}</div><button onClick="window.history.back();">${backButtonText}</button></div>`;
+    const outputHtml = `<link rel="stylesheet" href="../api-output.css"><div class="message-container"><div class="message-wrapper">${messageContent}</div><button onClick="window.history.back();">${backButtonText}</button></div>`;
 
     res.statusCode = 200
     res.setHeader('Content-Type', 'text/html');

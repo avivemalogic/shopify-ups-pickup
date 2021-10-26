@@ -2,6 +2,7 @@ require("dotenv").config();
 const { HOST, API_VERSION } = process.env;
 const { getShopifyRequestHeaders } = require('./helper');
 const shippingDataFieldsObject = require('../data/shipping_data_fields.json')
+const PLUGIN_FIELDS_VERSION = "1.0.7";
 
 /**
  * Add Shipping Method Options
@@ -19,8 +20,14 @@ async function createPickUpsOptions(shop, accessToken){
         const getShippingDataJson = await getShippingData.json();
 
         const shippingDataMetafields = getShippingDataJson.metafields;
+
+        const currentFieldsVersion = shippingDataMetafields.find((item) => item.key === 'fieldsVersion');
+        if(currentFieldsVersion !== undefined && currentFieldsVersion.value === PLUGIN_FIELDS_VERSION) {
+            return;
+        }
+
         shippingDataFieldsObject.forEach(async (item) => {
-            if(shippingDataMetafields !== null){
+            if(item.key !== 'upsApiUrl' && item.key !== 'upsCreateApiUrl' && item.key !== 'fieldsVersion' && shippingDataMetafields !== null){
                 if(shippingDataMetafields.find((field) => field.key === item.key) !== undefined){
                     return;
                 }

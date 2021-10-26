@@ -1,5 +1,4 @@
 const { HOST } = process.env;
-const PLUGIN_FIELDS_VERSION = "1.0.4";
 import {
     Button,
     Card,
@@ -34,10 +33,13 @@ class Index extends Component {
             'fulfillOrderItems': {},
             'fulfillOrderItemsNotify': {},
             'upsApiUrl': {},
+            'upsCreateApiUrl': {},
             'upsIntegrationUsername': {},
             'upsIntegrationPassword': {},
             'upsIntegrationScope': {},
             'upsIntegrationReference2': {},
+            'upsIntegrationOrderWeight': {},
+            'upsIntegrationOrderWeightValue': {},
             'orderIntegrationAutomatic': {}
         };
     }
@@ -60,35 +62,6 @@ class Index extends Component {
             const json = await response.json();
 
             data = Object.assign(json, {'shop': shop});
-
-            // New Fields Update
-            const currentFieldsVersion = json.metafields.find((item) => item.key === 'fieldsVersion');
-            if(currentFieldsVersion === undefined || currentFieldsVersion.value !== PLUGIN_FIELDS_VERSION){
-                const currentFieldsVersionMetafieldID = currentFieldsVersion.id;
-
-                const fieldsVersionFields = [{
-                    "id": currentFieldsVersionMetafieldID,
-                    "value": PLUGIN_FIELDS_VERSION,
-                    "value_type": "string"
-                }];
-                await fetch(`${HOST}api/save-shipping-data`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({'shop': shop, 'fields': fieldsVersionFields })
-                });
-
-                await fetch(`${HOST}api/set-shipping-data`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({'shop': shop })
-                });
-            }
         }
 
         return {
@@ -142,6 +115,10 @@ class Index extends Component {
             {label: 'Pickup Point ID', value: 'pickup_point_id'},
             {label: 'Pickup Point Name', value: 'pickup_point_name'}
         ];
+        const upsIntegrationOrderWeightOptions = [
+            {label: 'Items Weight', value: 'items'},
+            {label: 'Fixed Value', value: 'fixed_value'}
+        ]
 
         if(state.shop === ''){
             return (
@@ -215,7 +192,15 @@ class Index extends Component {
 
                             <Card sectioned>
                                 <TextField
-                                    value={state.upsApiUrl.value}
+                                    value={state.upsCreateApiUrl.value === 'X' ? '' : state.upsCreateApiUrl.value}
+                                    onChange={this.handleChange('upsCreateApiUrl')}
+                                    label="REST Create Api URL"
+                                    type="text"
+                                />
+                            </Card>
+                            <Card sectioned>
+                                <TextField
+                                    value={state.upsApiUrl.value === 'X' ? '' : state.upsApiUrl.value}
                                     onChange={this.handleChange('upsApiUrl')}
                                     label="REST Api URL"
                                     type="text"
@@ -223,7 +208,7 @@ class Index extends Component {
                             </Card>
                             <Card sectioned>
                                 <TextField
-                                    value={state.upsIntegrationUsername.value}
+                                    value={state.upsIntegrationUsername.value === 'X' ? '' : state.upsIntegrationUsername.value}
                                     onChange={this.handleChange('upsIntegrationUsername')}
                                     label="REST Api Username"
                                     type="text"
@@ -231,7 +216,7 @@ class Index extends Component {
                             </Card>
                             <Card sectioned>
                                 <TextField
-                                    value={state.upsIntegrationPassword.value}
+                                    value={state.upsIntegrationPassword.value === 'X' ? '' : state.upsIntegrationPassword.value}
                                     onChange={this.handleChange('upsIntegrationPassword')}
                                     label="REST Api Password"
                                     type="text"
@@ -239,7 +224,7 @@ class Index extends Component {
                             </Card>
                             <Card sectioned>
                                 <TextField
-                                    value={state.upsIntegrationScope.value}
+                                    value={state.upsIntegrationScope.value === 'X' ? '' : state.upsIntegrationScope.value}
                                     onChange={this.handleChange('upsIntegrationScope')}
                                     label="REST Api Scope"
                                     type="text"
@@ -253,6 +238,26 @@ class Index extends Component {
                                     options={upsIntegrationReference2Options}
                                 />
                             </Card>
+                            <Card sectioned>
+                                <Select
+                                    value={state.upsIntegrationOrderWeight.value}
+                                    onChange={this.handleChange('upsIntegrationOrderWeight')}
+                                    label="Order Weight By"
+                                    options={upsIntegrationOrderWeightOptions}
+                                />
+                            </Card>
+
+                            { state.upsIntegrationOrderWeight.value === 'fixed_value' &&
+                                <Card sectioned>
+                                    <TextField
+                                        value={state.upsIntegrationOrderWeightValue.value}
+                                        onChange={this.handleChange('upsIntegrationOrderWeightValue')}
+                                        label="Weight Value"
+                                        step="0.01"
+                                        type="number"
+                                    />
+                                </Card>
+                            }
                         </div>
                     </Layout.AnnotatedSection>
 
@@ -329,7 +334,7 @@ class Index extends Component {
     handleChange = (field) => {
         return (val) => {
             const newObject = this.state[field];
-            newObject.value = val;
+            newObject.value = val ? val : 'X';
             this.setState({[field]: newObject});
 
             if(this.state.isChanged.length === 0 || !this.state.isChanged.includes(field)) {

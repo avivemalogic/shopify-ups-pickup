@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac } = require('../../server/helper');
+const { updatedMetafields, mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac } = require('../../server/helper');
 
 async function getWayBillNumber(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -39,7 +39,6 @@ export default async (req, res) => {
     const isBulkAction = req.query['ids[]'] !== undefined;
     let orderIds = isBulkAction ? req.query['ids[]'] : req.query.id;
     const requestQuery = req.query;
-    const orderIdDirectAdminPage = isBulkAction ? '' : req.query.id;
     let output = '';
     let pdfDownloadFile = '';
 
@@ -48,6 +47,8 @@ export default async (req, res) => {
     }
 
     if(output === '') {
+
+        await updatedMetafields(shop);
 
         if (Array.isArray(orderIds) === false) {
             orderIds = [orderIds];
@@ -90,7 +91,7 @@ export default async (req, res) => {
                 continue;
             }
 
-            const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData);
+            const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData, 'print');
             if (!isLoggedIn) {
                 output += `${errorsPrefix} REST API Auth Error`;
                 continue;

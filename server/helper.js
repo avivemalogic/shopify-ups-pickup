@@ -132,8 +132,17 @@ function getFieldFromIntegrationData(integrationData, fieldKey){
     }
 }
 
-async function getRestApiAccessToken(integrationData){
-    const apiUrl = getFieldFromIntegrationData(integrationData,'upsApiUrl') + 'Token';
+async function getRestApiAccessToken(integrationData, type){
+    const apiType = type === 'create' ? 'upsCreateApiUrl' : 'upsApiUrl';
+    const apiHost = getFieldFromIntegrationData(integrationData,apiType);
+
+    if(!apiHost || apiHost === 'X'){
+        return {
+            'errors': 'REST Create Api URL is empty'
+        }
+    }
+
+    const apiUrl = apiHost + 'Token';
     const apiUsername = getFieldFromIntegrationData(integrationData,'upsIntegrationUsername');
     const apiPassword = getFieldFromIntegrationData(integrationData,'upsIntegrationPassword');
     const apiScope = getFieldFromIntegrationData(integrationData,'upsIntegrationScope');
@@ -381,6 +390,30 @@ async function sendOrderToUps(shop){
     }
 }
 
+async function saveOrderWeight(shop, orderId, orderWeight){
+    const response = await fetch(`${HOST}api/save-order-weight`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'orderWeight': orderWeight})
+    });
+
+    return await response.json();
+}
+
+async function updatedMetafields(shop){
+    await fetch(`${HOST}api/set-shipping-data`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop })
+    });
+}
+
 module.exports = {
     getShopifyRequestHeaders,
     getIntegrationData,
@@ -398,5 +431,7 @@ module.exports = {
     autoSendToUps,
     getFieldFromIntegrationData,
     restApiPrintLabel,
-    mergePdf
+    mergePdf,
+    saveOrderWeight,
+    updatedMetafields
 }

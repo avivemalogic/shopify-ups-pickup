@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.0.4",
+    "value": "1.0.7",
     "value_type": "string"
   },
   {
@@ -37,8 +37,14 @@
   },
   {
     "namespace": "pickups-integration",
+    "key": "upsCreateApiUrl",
+    "value": "https://plugins.ship.co.il/",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
     "key": "upsApiUrl",
-    "value": "https://newbetaapi.ship.co.il/",
+    "value": "https://api.ship.co.il/",
     "value_type": "string"
   },
   {
@@ -63,6 +69,18 @@
     "namespace": "pickups-integration",
     "key": "upsIntegrationReference2",
     "value": "none",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "upsIntegrationOrderWeight",
+    "value": "items",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "upsIntegrationOrderWeightValue",
+    "value": "0",
     "value_type": "string"
   },
   {
