@@ -209,7 +209,7 @@ function hidePickUpsButton(text){
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({'shop': shop, 'orderId': orderId, 'pickupPoint': pickupPoint})
+                body: JSON.stringify({'shop': shop, 'orderId': orderId, 'pickupPoint': pickupPoint, 'autoSend': true})
             });
 
             if (getOrderResponse.status !== 200) {

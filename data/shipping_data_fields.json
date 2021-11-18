@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.0.7",
+    "value": "1.1.1",
     "value_type": "string"
   },
   {
@@ -37,7 +37,7 @@
   },
   {
     "namespace": "pickups-integration",
-    "key": "upsCreateApiUrl",
+    "key": "upsApiCreateUrl",
     "value": "https://plugins.ship.co.il/",
     "value_type": "string"
   },
@@ -98,6 +98,54 @@
   {
     "namespace": "pickups-integration",
     "key": "fulfillOrderItemsNotify",
+    "value": "false",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsEnabled",
+    "value": "false",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsPrice",
+    "value": "X",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsMaxPrice",
+    "value": 0,
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsMaxAmount",
+    "value": 0,
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsNumber",
+    "value": 3,
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsAccuracy",
+    "value": "city",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsTitle",
+    "value": "X",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "orderIntegrationClosestPoints",
     "value": "false",
     "value_type": "string"
   }]

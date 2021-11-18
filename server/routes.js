@@ -15,7 +15,9 @@ router.get('/', async (ctx, next) => {
     ctx.state = { shopify: { shop: shop, accessToken: token } };
     await verifyToken(ctx, next);
 
-    await createPickUpsOptions(shop, token);
+    if(shop) {
+        await createPickUpsOptions(shop, token);
+    }
 });
 
 router.post('/api/save-shipping-data', bodyParser(), async (ctx, next) => {
@@ -81,8 +83,13 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     }
     const dataJson = await response.json();
 
-    if(!isPrivate){
-        dataJson.metafields = dataJson.metafields.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad' || item.key === 'upsPickupsChangePickupPoint')
+    if(dataJson.metafields !== undefined) {
+
+        dataJson.metafields = dataJson.metafields.filter((item) => item.namespace.includes('pickups-'));
+
+        if (!isPrivate) {
+            dataJson.metafields = dataJson.metafields.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad' || item.key === 'upsPickupsChangePickupPoint')
+        }
     }
 
     ctx.body = dataJson;
@@ -113,6 +120,7 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;
     const orderId = data.orderId;
+    const autoSend = data.autoSend;
     const pickupPoint = data.pickupPoint;
 
     const accessToken = await getAccessToken(shop);
@@ -133,10 +141,12 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
 
     await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
 
-    await autoSendToUps(shop, orderId);
+    if(autoSend) {
+        await autoSendToUps(shop, orderId);
+    }
 
     const pickupPointObject = JSON.parse(pickupPoint);
-    const tagsRequestOptions = {
+    const notesRequestOptions = {
         method: 'PUT',
         headers: getShopifyRequestHeaders(accessToken),
         body: JSON.stringify({
@@ -148,11 +158,11 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const tagsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, tagsRequestOptions);
+    const notesResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, notesRequestOptions);
     if(DEBUG_MODE === 'true'){
-        console.log(tagsResponse);
+        console.log(notesResponse);
     }
-    ctx.body = await tagsResponse.json();
+    ctx.body = await notesResponse.json();
     ctx.statusCode = 200;
 });
 
@@ -162,6 +172,7 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
     const orderId = data.orderId;
     const wayBillNumber = data.wayBillNumber;
     const orderTags = data.orderTags.split(',').filter((item) => !item.includes('UPS Error:')).join(',');
+    const additionalTags = data.additionalTags ? ', '+data.additionalTags : '';
     const orderWeight = data.orderWeight+' Kg';
 
     const accessToken = await getAccessToken(shop);
@@ -189,7 +200,7 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
             "order":
                 {
                     "id": orderId,
-                    "tags": `${orderTags}, Sent To UPS, ${wayBillNumber}, ${orderWeight}`
+                    "tags": `${orderTags}, Sent To UPS, ${wayBillNumber}, ${orderWeight}${additionalTags}`
                 }
         })
     };
@@ -483,20 +494,30 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
         }
 
         const orderId = body.id;
+        const shippingMethod = body.shipping_lines[0];
+        const shippingMethodCode = shippingMethod.code;
+        let closestPointsChosenPoint;
+        if(shippingMethodCode.includes('pickups_')){
+            closestPointsChosenPoint = JSON.stringify({
+                "title": shippingMethod.title,
+                "street": '',
+                "city": '',
+                "iid": shippingMethodCode.replace('pickups_','')
+            })
+        }
         const isPickups = body.shipping_lines.findIndex((item) => isPickUpsShippingMethod(item.code));
 
         const orderData = await getOrderData(shop, orderId);
-        const pickupPoint = orderData.order.note;
+        const pickupPoint = closestPointsChosenPoint ? closestPointsChosenPoint : orderData.order.note;
 
-        if(pickupPoint !== '') {
+        if(pickupPoint !== '' && pickupPoint !== null) {
             try {
-                JSON.parse(pickupPoint);
-                await saveOrderNote(shop, orderId);
-
                 if(isPickups > -1) {
-                    await saveOrderPickupPoint(shop, orderId, pickupPoint);
+                    await saveOrderPickupPoint(shop, orderId, pickupPoint, true);
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.log('Error: '+e)
+            }
         }
 
         const integrationData = await getIntegrationData(shop);

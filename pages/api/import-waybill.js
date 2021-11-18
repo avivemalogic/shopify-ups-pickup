@@ -176,7 +176,7 @@ function getOrderWeight(integrationData, orderItems){
 }
 
 async function restApiImportWaybillFromLeadId(accessToken, integrationData, getOrderJson, orderPickupsData){
-    let apiUrl = getFieldFromIntegrationData(integrationData,'upsCreateApiUrl') + 'api/v1/easyship/get-leads-track-numbers';
+    let apiUrl = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl') + 'api/v1/easyship/get-leads-track-numbers';
     const leadId = orderPickupsData.orderLeadId;
 
 

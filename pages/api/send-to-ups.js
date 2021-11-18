@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod } = require('../../server/helper');
+const { saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -31,14 +31,14 @@ async function getOrderPickupsData(shop, orderId){
     return { 'orderSentToUps': orderSentToUps, 'orderPickupPoint': orderPickupPoint, 'orderLeadId': orderLeadId};
 }
 
-async function saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight){
+async function saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight, additionalTags = null){
     const response = await fetch(`${HOST}api/save-order-waybill-number`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'orderTags': orderTags, 'orderWeight': orderWeight})
+        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'orderTags': orderTags, 'orderWeight': orderWeight, 'additionalTags': additionalTags})
     });
 
     return await response.json();
@@ -187,8 +187,8 @@ function getOrderWeight(integrationData, orderItems){
     return defaultWeight;
 }
 
-async function restApiSendToUps(accessToken, integrationData, getOrderJson, orderPickupsData){
-    const apiHost = getFieldFromIntegrationData(integrationData,'upsCreateApiUrl');
+async function restApiSendToUps(shop, accessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags){
+    const apiHost = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl');
 
     if(!apiHost || apiHost === 'X'){
         return {
@@ -205,6 +205,7 @@ async function restApiSendToUps(accessToken, integrationData, getOrderJson, orde
     const streetName = streetAddress;
     const houseNumber = getHouseNumber(streetAddress);
     const phoneNumber = getPhoneNumber(getOrderJson.order);
+    const orderOriginalId = getOrderJson.order.id;
     const orderId = getOrderJson.order.name.substring(1);
     const shippingMethod = getOrderJson.order.shipping_lines[0].code;
     const itemsTotalWeight = getOrderWeight(integrationData, getOrderJson.order.line_items);
@@ -240,13 +241,48 @@ async function restApiSendToUps(accessToken, integrationData, getOrderJson, orde
         'UseDefaultShipperAddress': 'true'
     }
 
+    let closestPointAccuracyLabel;
     if (isPickups) {
-        const pickupPoint = getPickupPoint(orderPickupsData);
-        const pickupPointId = pickupPoint['id'];
+        let pickupPoint = getPickupPoint(orderPickupsData);
+        let pickupPointId = pickupPoint['id'];
 
         if (!pickupPointId) {
-            return {
-                'errors': 'No Pickup Point Selected'
+
+            if(orderClosestPointsWhileSendToUpsIsEnabled(integrationData)){
+                const customerShippingAddress = {
+                    'city': cityName,
+                    'address1': streetName,
+                    'address2': houseNumber
+                };
+                const closestPoint = await getClosestPoints(shop, shippingData, customerShippingAddress, 1);
+
+                if(closestPoint['errors']){
+                    return {
+                        'errors': closestPoint['errors']
+                    }
+                }else{
+                    closestPointAccuracyLabel = closestPoint['accuracy']['label'];
+                    pickupPointId = closestPoint['response'][0]['PointID']
+
+                    pickupPoint = JSON.stringify({
+                        "title": closestPoint['response'][0]['PointName'],
+                        "street": closestPoint['response'][0]['StreetName']+' '+closestPoint['response'][0]['HouseNumber'],
+                        "city": closestPoint['response'][0]['CityName'],
+                        "iid": pickupPointId
+                    })
+
+                    try {
+                        await saveOrderPickupPoint(shop, orderOriginalId, pickupPoint, false);
+                    } catch (e) {
+                        console.log('Error: '+e)
+                    }
+                }
+            }
+
+            if(!pickupPointId){
+                return {
+                    'errors': 'No Pickup Point Selected'
+                }
             }
         }
         functionArgs['PickupPointID'] = pickupPointId;
@@ -288,7 +324,7 @@ async function restApiSendToUps(accessToken, integrationData, getOrderJson, orde
         return { 'errors': e }
     }
 
-    return { 'wayBillNumber': trackingNumber, 'leadId': leadId };
+    return { 'wayBillNumber': trackingNumber, 'leadId': leadId, 'closestPointAccuracyLabel': closestPointAccuracyLabel  };
 }
 
 function isFulfillOrderItemsEnabled(integrationData){
@@ -350,11 +386,12 @@ export default async (req, res) => {
                 continue;
             }
 
-            const integrationData = await getIntegrationData(shop);
-            if(integrationData['error']){
-                output += `${errorsPrefix} ${integrationData['message']}`;
+            const shippingData = await getShippingData(shop);
+            if(shippingData['error']){
+                output += `${errorsPrefix} ${shippingData['message']}`;
                 continue;
             }
+            const integrationData = shippingData.metafields.filter((item) => item.namespace === 'pickups-integration');
             if (!orderIntegrationIsEnabled(integrationData)) {
                 const error = 'Order Integration setting is Disabled';
                 await saveOrderTagError(shop, orderId, orderTags, error);
@@ -369,7 +406,7 @@ export default async (req, res) => {
                 output += `${errorsPrefix} ${error}`;
                 continue;
             }
-            const upsData = await restApiSendToUps(accessToken, integrationData, getOrderJson, orderPickupsData);
+            const upsData = await restApiSendToUps(shop, accessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags);
 
             if (upsData.errors) {
                 console.log('upsData.errors', upsData.errors);
@@ -396,7 +433,7 @@ export default async (req, res) => {
             }else{
                 const wayBillNumber = upsData.wayBillNumber;
 
-                const response = await saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight);
+                const response = await saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight, upsData.closestPointAccuracyLabel);
                 if (response.errors) {
                     await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
                     output += `${errorsPrefix} ${response.errors}`;

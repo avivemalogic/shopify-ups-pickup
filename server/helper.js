@@ -23,11 +23,15 @@ function orderAutomaticSendIsEnabled(integrationData){
     return !!integrationData.find((item) => item.key === 'orderIntegrationAutomatic' && item.value === 'true')
 }
 
-function isPickUpsShippingMethod(shippingMethod){
-    return shippingMethod.includes('Access Points UPS') || shippingMethod.includes('UPS PickUp')
+function orderClosestPointsWhileSendToUpsIsEnabled(integrationData){
+    return !!integrationData.find((item) => item.key === 'orderIntegrationClosestPoints' && item.value === 'true')
 }
 
-async function getIntegrationData(shop){
+function isPickUpsShippingMethod(shippingMethod){
+    return shippingMethod.includes('Access Points UPS') || shippingMethod.includes('UPS PickUp') || shippingMethod.includes('pickups_')
+}
+
+async function getShippingData(shop){
     const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
         method: 'POST',
         headers: {
@@ -37,7 +41,16 @@ async function getIntegrationData(shop){
         body: JSON.stringify({'shop': shop, 'isPrivate': true})
     });
     try {
-        const shippingDataJson = await shippingDataResponse.json();
+        return await shippingDataResponse.json();
+    } catch (e) {
+        console.log('getShippingData Error:', e);
+        return {'error': true, 'message': 'getShippingData Error:'+e };
+    }
+}
+
+async function getIntegrationData(shop){
+    try {
+        const shippingDataJson = await getShippingData(shop);
         return shippingDataJson.metafields.filter((item) => item.namespace === 'pickups-integration');
     } catch (e) {
         console.log('getIntegrationData Error:', e);
@@ -85,21 +98,22 @@ async function saveOrderNote(shop, orderId){
     }
 }
 
-async function saveOrderPickupPoint(shop, orderId, pickupPoint){
+async function saveOrderPickupPoint(shop, orderId, pickupPoint, autoSend = false){
+
     const saveOrderPickupPointResponse = await fetch(`${HOST}api/save-order-pickup-point`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'pickupPoint': pickupPoint})
+        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'pickupPoint': pickupPoint, 'autoSend': autoSend})
     });
 
     if(saveOrderPickupPointResponse.status !== 200){
         return {'errors': `${saveOrderPickupPointResponse.status} - ${saveOrderPickupPointResponse.statusText}`}
     }
     try {
-        return await saveOrderPickupPointResponse.json();
+        await saveOrderPickupPointResponse.json();
     } catch (e) {
         console.log('saveOrderPickupPointData Error: ', e);
         return {'errors': 'saveOrderPickupPointData Error: '+e };
@@ -133,7 +147,7 @@ function getFieldFromIntegrationData(integrationData, fieldKey){
 }
 
 async function getRestApiAccessToken(integrationData, type){
-    const apiType = type === 'create' ? 'upsCreateApiUrl' : 'upsApiUrl';
+    const apiType = type === 'create' ? 'upsApiCreateUrl' : 'upsApiUrl';
     const apiHost = getFieldFromIntegrationData(integrationData,apiType);
 
     if(!apiHost || apiHost === 'X'){
@@ -414,6 +428,123 @@ async function updatedMetafields(shop){
     });
 }
 
+async function getClosestPoints(shop, shippingData, customerShippingAddress, pointsNumber = null){
+    const shippingDataFields = shippingData.metafields;
+    const integrationData = shippingDataFields.filter((item) => item.namespace === 'pickups-integration');
+    const apiHost = getFieldFromIntegrationData(integrationData,'upsApiUrl');
+    const apiUrl = apiHost + 'api/v1/pickups/getclosestpoints';
+
+    const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData, 'print');
+    if (!isLoggedIn) {
+        return { 'errors': 'Auth Error' }
+    }
+
+    let pointTypes = shippingDataFields.find((item) => item.key === 'upsPickupsType').value;
+    switch(pointTypes){
+        case 'stores':
+            pointTypes = 1;
+            break;
+        case 'lockers':
+            pointTypes = 2;
+            break;
+        case 'all':
+            pointTypes = 3;
+            break;
+    }
+    const closestPointsAccuracy = shippingDataFields.find((item) => item.key === 'closestPointsAccuracy').value;
+    const points = pointsNumber !== null ? pointsNumber : shippingDataFields.find((item) => item.key === 'closestPointsNumber').value;
+
+    let functionArgs = {
+        'city': customerShippingAddress.city,
+        'street': customerShippingAddress.address1,
+        'houseNumber': customerShippingAddress.address2 || 0,
+        'pointTypes': pointTypes,
+        'points': points
+    }
+
+    const params = new URLSearchParams(functionArgs).toString();
+
+    try {
+        const getClosestPointsResponse = await fetch(apiUrl+'?'+params, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + accessToken
+            }
+        });
+        const data = await getClosestPointsResponse.json();
+        if(!data){
+            throw 'Api Return Empty Response';
+        }
+
+        if(data['IsSuccessful'] !== true){
+            throw data['ErrorMSG'];
+        }
+
+        const accuracyCodes = getAccuracyCode(closestPointsAccuracy);
+        if(!accuracyCodes.includes(data['ResponseCode'])){
+            throw 'Pickup points not found';
+        }
+
+        return { 'response': data['Points'], 'accuracy': {'value': closestPointsAccuracy, 'label': getAccuracyLabel(closestPointsAccuracy)} };
+
+    } catch (e) {
+        console.log('getClosestPoints Error: ',e);
+        return { 'errors': e }
+    }
+}
+
+function getAccuracyCode(type){
+    const accuracyCodes = [];
+
+    // exact
+    accuracyCodes.push('100');
+    accuracyCodes.push('200');
+    accuracyCodes.push('300');
+    accuracyCodes.push('400');
+
+    if(type !== 'exact') {
+        accuracyCodes.push('120');
+        accuracyCodes.push('125');
+        accuracyCodes.push('220');
+    }
+
+    if(type === 'city') {
+        accuracyCodes.push('840');
+    }
+
+    return accuracyCodes;
+}
+
+function getAccuracyLabel(type){
+    switch(type){
+        case 'exact':
+            return 'מדוייק';
+        case 'city':
+            return 'עד מרכז העיר';
+        case 'street':
+            return 'עד מרכז רחוב';
+    }
+}
+
+function getAccuracyCodeLabel(code){
+    switch(code){
+        case '100':
+        case '200':
+        case '300':
+        case '400':
+            return 'מדוייק';
+        case '120':
+        case '125':
+        case '220':
+            return 'עד מרכז רחוב';
+        case '840':
+            return 'עד מרכז העיר';
+        default:
+            return code;
+    }
+}
+
 module.exports = {
     getShopifyRequestHeaders,
     getIntegrationData,
@@ -433,5 +564,8 @@ module.exports = {
     restApiPrintLabel,
     mergePdf,
     saveOrderWeight,
-    updatedMetafields
+    updatedMetafields,
+    orderClosestPointsWhileSendToUpsIsEnabled,
+    getShippingData,
+    getClosestPoints
 }

@@ -90,8 +90,6 @@ export default async (req, res) => {
                 continue;
             }
 
-            // TODO: check if option is disabled
-
             if(pickupPoint){
                 const getOrderResponse = await fetch(`${HOST}api/save-order-pickup-point`, {
                     method: 'POST',
@@ -99,7 +97,7 @@ export default async (req, res) => {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({'shop': shop, 'orderId': orderId, 'pickupPoint': pickupPoint})
+                    body: JSON.stringify({'shop': shop, 'orderId': orderId, 'pickupPoint': pickupPoint, 'autoSend': true})
                 });
 
                 if (getOrderResponse.status !== 200) {

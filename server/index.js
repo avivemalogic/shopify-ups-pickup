@@ -7,7 +7,7 @@ const next = require('next');
 const { createShopifyAuth } = require("koa-shopify-auth-cookieless");
 const session = require('koa-session');
 const { insertAccessToken } = require('./helper');
-const { createPickUpsOptions, addPickupPointScripts, createWebhook } = require('./init');
+const { createPickUpsOptions, addPickupPointScripts, addCarriersService, createWebhook } = require('./init');
 const router = require('./routes');
 
 dotenv.config();
@@ -38,15 +38,16 @@ app.prepare().then(() => {
         createShopifyAuth({
             apiKey: SHOPIFY_API_KEY,
             secret: SHOPIFY_API_SECRET_KEY,
-            scopes: ['write_orders','write_script_tags'],
+            scopes: ['write_orders','write_script_tags', 'write_shipping'],
             accessMode: 'offline',
             async afterAuth(ctx) {
                 const { shop, accessToken } = ctx.state.shopify;
 
                 try {
                     await insertAccessToken(shop, accessToken);
-                    await createPickUpsOptions(shop, accessToken);
+                    await createPickUpsOptions(shop, accessToken, true);
                     await addPickupPointScripts(shop, accessToken);
+                    await addCarriersService(shop, accessToken);
                     await createWebhook('orders/create', 'order-create', shop, accessToken);
                 } catch (e){
                     throw new Error(e);
