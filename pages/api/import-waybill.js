@@ -176,9 +176,15 @@ function getOrderWeight(integrationData, orderItems){
 }
 
 async function restApiImportWaybillFromLeadId(accessToken, integrationData, getOrderJson, orderPickupsData){
-    let apiUrl = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl') + 'api/v1/easyship/get-leads-track-numbers';
-    const leadId = orderPickupsData.orderLeadId;
 
+    let apiHost = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl');
+
+    if(!apiHost || apiHost === 'X'){
+        apiHost = 'https://plugins.ship.co.il/';
+    }
+
+    const apiUrl = apiHost + 'api/v1/easyship/get-leads-track-numbers';
+    const leadId = orderPickupsData.orderLeadId;
 
     let functionArgs = {
         'model.leadIds': leadId

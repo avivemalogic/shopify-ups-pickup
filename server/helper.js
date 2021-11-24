@@ -148,11 +148,15 @@ function getFieldFromIntegrationData(integrationData, fieldKey){
 
 async function getRestApiAccessToken(integrationData, type){
     const apiType = type === 'create' ? 'upsApiCreateUrl' : 'upsApiUrl';
-    const apiHost = getFieldFromIntegrationData(integrationData,apiType);
+    let apiHost = getFieldFromIntegrationData(integrationData,apiType);
 
     if(!apiHost || apiHost === 'X'){
-        return {
-            'errors': 'REST Create Api URL is empty'
+        if(type === 'create'){
+            apiHost = 'https://plugins.ship.co.il/';
+        }else {
+            return {
+                'errors': 'REST Create Api URL is empty'
+            }
         }
     }
 

@@ -188,12 +188,10 @@ function getOrderWeight(integrationData, orderItems){
 }
 
 async function restApiSendToUps(shop, accessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags){
-    const apiHost = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl');
+    let apiHost = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl');
 
     if(!apiHost || apiHost === 'X'){
-        return {
-            'errors': 'REST Create Api URL is empty'
-        }
+        apiHost = 'https://plugins.ship.co.il/';
     }
 
     const apiUrl = apiHost + 'api/v1/shipment/insert-domestic-wb-by-customer';

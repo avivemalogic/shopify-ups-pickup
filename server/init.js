@@ -2,7 +2,7 @@ require("dotenv").config();
 const { HOST, API_VERSION } = process.env;
 const { getShopifyRequestHeaders } = require('./helper');
 const shippingDataFieldsObject = require('../data/shipping_data_fields.json')
-const PLUGIN_FIELDS_VERSION = "1.1.1";
+const PLUGIN_FIELDS_VERSION = "1.1.2";
 
 /**
  * Add Shipping Method Options
@@ -40,7 +40,7 @@ async function createPickUpsOptions(shop, accessToken, install = false){
         }
 
         shippingDataFieldsObject.forEach(async (item) => {
-            if(item.key !== 'upsApiUrl' && item.key !== 'upsApiCreateUrl' && item.key !== 'fieldsVersion' && shippingDataMetafields !== null){
+            if(item.key !== 'closestPointsMaxPrice' && item.key !== 'closestPointsMaxAmount' && item.key !== 'upsApiUrl' && item.key !== 'upsApiCreateUrl' && item.key !== 'fieldsVersion' && shippingDataMetafields !== null){
                 if(shippingDataMetafields.find((field) => field.key === item.key) !== undefined){
                     return;
                 }
@@ -130,7 +130,10 @@ async function addCarriersService(shop, accessToken){
     };
 
     try {
-        await fetch(`https://${shop}/admin/api/${API_VERSION}/carrier_services.json`, carrierServicesRequestOptions);
+        const addCarriersServiceResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/carrier_services.json`, carrierServicesRequestOptions);
+        const addCarriersServiceJson = await addCarriersServiceResponse.json();
+
+        console.log('addCarriersServiceJson', addCarriersServiceJson)
     } catch (e){
         throw new Error(e);
     }
