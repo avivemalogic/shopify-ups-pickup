@@ -14,9 +14,9 @@ function getAvailableRates(data, serviceNamePrefix, price){
             distance = data[i].Distance;
         }
         arr.push({
-            "service_name": serviceName+data[i].PointName,
+            "service_name": serviceName+data[i].PointName +' '+ serviceDescription+' ('+distance+' ק"מ)',
             "service_code": 'pickups_'+data[i].PointID,
-            "description": serviceDescription+' ('+distance+' ק"מ)',
+            "description": "",
             "total_price": price,
             "currency": "ILS"
         });
@@ -51,7 +51,9 @@ export default async (req, res) => {
     const methodPrice = shippingDataFields.find((item) => item.key === 'closestPointsPrice').value;
     const methodPriceAfterMaxAmount = shippingDataFields.find((item) => item.key === 'closestPointsMaxPrice').value;
     const methodMaxAmount = shippingDataFields.find((item) => item.key === 'closestPointsMaxAmount').value;
+    const methodMaxWeight = shippingDataFields.find((item) => item.key === 'closestPointsMaxWeight').value;
     const itemsTotalPrice = req.body.rate.items.reduce( ( sum, { price, quantity } ) => sum + (price * quantity) , 0);
+    const itemsTotalWeightGrams = req.body.rate.items.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
 
     if(isEnabled !== 'true' || !methodPrice || methodPrice === 'X') {
         return res.end('Closest Points is Disabled');
@@ -60,6 +62,14 @@ export default async (req, res) => {
     let price = methodPrice * 100;
     if(itemsTotalPrice >= (methodMaxAmount * 100)){
         price = methodPriceAfterMaxAmount * 100;
+    }
+
+    if(methodMaxWeight !== 'X' && methodMaxWeight > 0 && itemsTotalWeightGrams > 0){
+        if(itemsTotalWeightGrams > (Number(methodMaxWeight) * 1000)) {
+            const errorMessage = 'Order Items are overweight';
+            console.log(errorMessage);
+            return res.end(errorMessage);
+        }
     }
 
     try {

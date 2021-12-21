@@ -144,10 +144,16 @@ function getPickupPoint(data){
     }
 }
 
-function getReference2Field(reference2Type, order, orderPickupsData){
+function getReference2Field(reference2Type, order, orderPickupsData, shippingData = null){
     const pickupPoint = getPickupPoint(orderPickupsData);
     const pickupPointId = pickupPoint['id'];
     const pickupPointTitle = pickupPoint['title'];
+
+    let serviceName;
+    if(shippingData) {
+        const shippingDataFields = shippingData.metafields;
+        serviceName = shippingDataFields.find((item) => item.key === 'closestPointsTitle').value;
+    }
 
     switch(reference2Type){
         case 'order_id':
@@ -161,7 +167,7 @@ function getReference2Field(reference2Type, order, orderPickupsData){
         case 'pickup_point_id':
             return pickupPointId;
         case 'pickup_point_name':
-            return pickupPointTitle;
+            return pickupPointTitle.replace(serviceName+' - ', '');
         default:
             return '';
     }
@@ -210,7 +216,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
 
     const isPickups = isPickUpsShippingMethod(shippingMethod);
     const reference2Type = getFieldFromIntegrationData(integrationData,'upsIntegrationReference2');
-    const reference2 = getReference2Field(reference2Type, getOrderJson.order, orderPickupsData);
+    const reference2 = getReference2Field(reference2Type, getOrderJson.order, orderPickupsData, shippingData).substring(0, 36);
     const shipmentInstructions = streetAddress;
 
     if(!isValidPhoneNumber(phoneNumber)){

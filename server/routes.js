@@ -77,7 +77,7 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
         headers: getShopifyRequestHeaders(accessToken)
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json`, requestOptions);
+    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?limit=250&metafield[owner_resource]=shop`, requestOptions);
     if(DEBUG_MODE === 'true'){
         console.log(response);
     }
@@ -146,6 +146,13 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
     }
 
     const pickupPointObject = JSON.parse(pickupPoint);
+
+    let pickupNote = `${pickupPointObject['iid']}\r\n${pickupPointObject['title']}`;
+
+    if(pickupPointObject['city']){
+        pickupNote += `\r\n${pickupPointObject['street']}, ${pickupPointObject['city']}`;
+    }
+
     const notesRequestOptions = {
         method: 'PUT',
         headers: getShopifyRequestHeaders(accessToken),
@@ -153,7 +160,7 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
             "order":
                 {
                     "id": orderId,
-                    "note": `${pickupPointObject['iid']}\r\n${pickupPointObject['title']}\r\n${pickupPointObject['street']}, ${pickupPointObject['city']}`
+                    "note": pickupNote
                 }
         })
     };

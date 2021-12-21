@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.1.2",
+    "value": "1.1.3",
     "value_type": "string"
   },
   {
@@ -140,6 +140,12 @@
   {
     "namespace": "pickups-closest",
     "key": "closestPointsTitle",
+    "value": "X",
+    "value_type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsMaxWeight",
     "value": "X",
     "value_type": "string"
   },

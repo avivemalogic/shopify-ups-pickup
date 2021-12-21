@@ -48,6 +48,7 @@ class Index extends Component {
             'closestPointsPrice': {},
             'closestPointsMaxPrice': {},
             'closestPointsMaxAmount': {},
+            'closestPointsMaxWeight': {},
             'closestPointsNumber': {},
             'closestPointsAccuracy': {},
             'closestPointsTitle': {}
@@ -70,6 +71,8 @@ class Index extends Component {
                 body: JSON.stringify({'shop': shop, 'isPrivate': true})
             });
             const json = await response.json();
+
+            console.log('shipping-data-json', json);
 
             data = Object.assign(json, {'shop': shop});
         }
@@ -223,6 +226,15 @@ class Index extends Component {
                                 </Card>
                                 <Card sectioned>
                                     <TextField
+                                        value={state.closestPointsMaxWeight.value}
+                                        onChange={this.handleChange('closestPointsMaxWeight','number')}
+                                        label="Max Weight (Kg)"
+                                        step="0.01"
+                                        type="number"
+                                    />
+                                </Card>
+                                <Card sectioned>
+                                    <TextField
                                         value={state.closestPointsNumber.value === 'X' ? '' : state.closestPointsNumber.value}
                                         onChange={this.handleChange('closestPointsNumber', 'number')}
                                         label="Number of Closest Points"
@@ -344,7 +356,7 @@ class Index extends Component {
                                     <TextField
                                         value={state.upsIntegrationOrderWeightValue.value}
                                         onChange={this.handleChange('upsIntegrationOrderWeightValue','number')}
-                                        label="Weight Value"
+                                        label="Weight Value (Kg)"
                                         step="0.01"
                                         type="number"
                                     />
