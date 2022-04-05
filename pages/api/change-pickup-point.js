@@ -37,6 +37,8 @@ export default async (req, res) => {
     const pickupPoint = req.query.pickupPoint;
     const urlParams = new URLSearchParams(requestQuery);
     let output = '';
+    let upsPickupsType = '';
+    let upsPickupsMapTest = '';
 
     if(!hmacVerified && verifyHmac(requestQuery, hmac, false) === false){
         output = 'Auth Error';
@@ -90,6 +92,10 @@ export default async (req, res) => {
                 continue;
             }
 
+            upsPickupsType = upsPickupsTypeField.value;
+            const upsPickupsMapTypeField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsMapType');
+            upsPickupsMapTest = upsPickupsMapTypeField.value === 'test' ? 'beta.' : '';
+
             if(pickupPoint){
                 const getOrderResponse = await fetch(`${HOST}api/save-order-pickup-point`, {
                     method: 'POST',
@@ -115,5 +121,5 @@ export default async (req, res) => {
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html');
-    res.redirect(`/change-pickup-point?${urlParams}&output=${output}`);
+    res.redirect(`/change-pickup-point?${urlParams}&output=${output}&upsPickupsType=${upsPickupsType}&upsPickupsMapTest=${upsPickupsMapTest}`);
 }

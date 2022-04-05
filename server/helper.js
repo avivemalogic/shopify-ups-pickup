@@ -459,7 +459,7 @@ async function getClosestPoints(shop, shippingData, customerShippingAddress, poi
     const points = pointsNumber !== null ? pointsNumber : shippingDataFields.find((item) => item.key === 'closestPointsNumber').value;
 
     let functionArgs = {
-        'city': customerShippingAddress.city,
+        'city': customerShippingAddress.city || '',
         'street': customerShippingAddress.address1,
         'houseNumber': customerShippingAddress.address2 || 0,
         'pointTypes': pointTypes,

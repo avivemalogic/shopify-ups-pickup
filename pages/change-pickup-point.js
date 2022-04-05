@@ -36,10 +36,12 @@ class Output extends Component {
             })
 
             if(output === ''){
+                const upsPickupsType = getParameters.upsPickupsType;
+                const upsPickupsMapTest = getParameters.upsPickupsMapTest;
                 const pkp = document.createElement('script');
                 pkp.type = 'text/javascript';
                 pkp.async = true;
-                pkp.src = `https://beta.pickuppoint.co.il/api/ups-pickups.sdk.all.js?r=2.0`;
+                pkp.src = `https://${upsPickupsMapTest}pickuppoint.co.il/api/ups-pickups.sdk.${upsPickupsType}.js?r=2.0`;
                 const scriptTag = document.getElementsByTagName('script')[0];
                 scriptTag.parentNode.insertBefore(pkp, scriptTag);
 

@@ -324,6 +324,8 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
             trackingNumber = data['TrackingNumber'];
         }
     } catch (e) {
+        console.log('restApiSendToUps apiUrl: ',apiUrl);
+        console.log('restApiSendToUps requestOptions: ',requestOptions);
         console.log('restApiSendToUps Error: ',e);
         return { 'errors': e }
     }

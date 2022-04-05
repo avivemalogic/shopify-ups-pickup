@@ -72,8 +72,6 @@ class Index extends Component {
             });
             const json = await response.json();
 
-            console.log('shipping-data-json', json);
-
             data = Object.assign(json, {'shop': shop});
         }
 
