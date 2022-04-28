@@ -204,8 +204,11 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     const customerEmail = getOrderJson.order.email;
     const customerName = getCustomerName(getOrderJson.order);
     const cityName = getOrderJson.order.shipping_address.city;
-    const customerZipcode = getOrderJson.order.shipping_address.zip;
-    const streetAddress = `${getOrderJson.order.shipping_address.address1} ${getOrderJson.order.shipping_address.address2}`;
+    const customerZipcode = getOrderJson.order.shipping_address.zip || '';
+    let streetAddress = getOrderJson.order.shipping_address.address1;
+    if(getOrderJson.order.shipping_address.address2) {
+        streetAddress += getOrderJson.order.shipping_address.address2;
+    }
     const streetName = streetAddress;
     const houseNumber = getHouseNumber(streetAddress);
     const phoneNumber = getPhoneNumber(getOrderJson.order);

@@ -37,12 +37,29 @@ export default async (req, res) => {
     const pickupPoint = req.query.pickupPoint;
     const urlParams = new URLSearchParams(requestQuery);
     let output = '';
-    let upsPickupsType = '';
-    let upsPickupsMapTest = '';
 
     if(!hmacVerified && verifyHmac(requestQuery, hmac, false) === false){
         output = 'Auth Error';
     }
+
+    const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop})
+    });
+    const shippingMetafields = await shippingDataResponse.json();
+    const upsPickupsChangePickupPoint = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsChangePickupPoint');
+    if(upsPickupsChangePickupPoint === undefined || upsPickupsChangePickupPoint.value !== 'true'){
+        output += `Change pickup point option is disabled, to enable it, go to the app settings and change it`;
+    }
+
+    const upsPickupsTypeField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsType');
+    const upsPickupsType = upsPickupsTypeField.value;
+    const upsPickupsMapTypeField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsMapType');
+    const upsPickupsMapType = upsPickupsMapTypeField.value === 'test' ? 'beta.' : '';
 
     if(output === '') {
 
@@ -77,25 +94,6 @@ export default async (req, res) => {
                 continue;
             }
 
-            const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({'shop': shop})
-            });
-            const shippingMetafields = await shippingDataResponse.json();
-            const upsPickupsTypeField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsChangePickupPoint');
-            if(upsPickupsTypeField === undefined || upsPickupsTypeField.value !== 'true'){
-                output += `Change pickup point option is disabled, to enable it, go to the app settings and change it`;
-                continue;
-            }
-
-            upsPickupsType = upsPickupsTypeField.value;
-            const upsPickupsMapTypeField = shippingMetafields.metafields.find((item) => item.key === 'upsPickupsMapType');
-            upsPickupsMapTest = upsPickupsMapTypeField.value === 'test' ? 'beta.' : '';
-
             if(pickupPoint){
                 const getOrderResponse = await fetch(`${HOST}api/save-order-pickup-point`, {
                     method: 'POST',
@@ -121,5 +119,5 @@ export default async (req, res) => {
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html');
-    res.redirect(`/change-pickup-point?${urlParams}&output=${output}&upsPickupsType=${upsPickupsType}&upsPickupsMapTest=${upsPickupsMapTest}`);
+    res.redirect(`/change-pickup-point?${urlParams}&output=${output}&ups_pickups_type=${upsPickupsType}&ups_pickups_map_type=${upsPickupsMapType}`);
 }
