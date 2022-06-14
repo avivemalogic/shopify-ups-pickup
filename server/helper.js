@@ -43,7 +43,7 @@ async function getShippingData(shop){
     try {
         return await shippingDataResponse.json();
     } catch (e) {
-        console.log('getShippingData Error:', e);
+        console.log(getDate()+' getShippingData Error:', e);
         return {'error': true, 'message': 'getShippingData Error:'+e };
     }
 }
@@ -53,7 +53,7 @@ async function getIntegrationData(shop){
         const shippingDataJson = await getShippingData(shop);
         return shippingDataJson.metafields.filter((item) => item.namespace === 'pickups-integration');
     } catch (e) {
-        console.log('getIntegrationData Error:', e);
+        console.log(getDate()+' getIntegrationData Error:', e);
         return {'error': true, 'message': 'getIntegrationData Error:'+e };
     }
 }
@@ -73,7 +73,7 @@ async function getOrderData(shop, orderId){
     try {
         return await getOrderResponse.json();
     } catch (e) {
-        console.log('getOrderData Error: ', e);
+        console.log(getDate()+' getOrderData Error: ', e);
         return {'errors': 'getOrderData Error: '+e };
     }
 }
@@ -93,7 +93,7 @@ async function saveOrderNote(shop, orderId){
     try {
         return await saveOrderNoteResponse.json();
     } catch (e) {
-        console.log('saveOrderNoteData Error: ', e);
+        console.log(getDate()+' saveOrderNoteData Error: ', e);
         return {'errors': 'saveOrderNoteData Error: '+e };
     }
 }
@@ -115,7 +115,7 @@ async function saveOrderPickupPoint(shop, orderId, pickupPoint, autoSend = false
     try {
         await saveOrderPickupPointResponse.json();
     } catch (e) {
-        console.log('saveOrderPickupPointData Error: ', e);
+        console.log(getDate()+' saveOrderPickupPointData Error: ', e);
         return {'errors': 'saveOrderPickupPointData Error: '+e };
     }
 }
@@ -183,7 +183,7 @@ async function getRestApiAccessToken(integrationData, type){
 
     try {
         const response = await fetch(apiUrl, requestOptions);
-        const data = await response.json();
+        const data = await getResponseJsonAndSaveLogs('getRestApiAccessToken', requestOptions, response);
 
         if(data['error']){
             throw data['error'] +' - '+data['error_description'];
@@ -196,7 +196,7 @@ async function getRestApiAccessToken(integrationData, type){
             'accessToken': accessToken
         }
     } catch (e) {
-        console.log('getRestApiAccessToken Error: ',e);
+        console.log(getDate()+' getRestApiAccessToken Error: ',e);
         return {'isLoggedIn': false, 'accessToken': false };
     }
 }
@@ -221,7 +221,7 @@ async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, fo
 
     try {
         const response = await fetch(apiUrl +'?'+ urlParams, requestOptions);
-        const data = await response.text();
+        const data = await getResponseJsonAndSaveLogs('restApiPrintLabel', requestOptions, response, 'text');
 
         if(!data){
             throw 'Api Return Empty Response';
@@ -234,7 +234,7 @@ async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, fo
         return { 'response': data };
 
     } catch (e) {
-        console.log('restApiPrintLabel Error: ',e);
+        console.log(getDate()+' restApiPrintLabel Error: ',e);
         return { 'errors': e }
     }
 }
@@ -321,7 +321,7 @@ async function verifyHmacWebhook(rawBody, hmac){
             .digest('base64');
         return generatedHash === hmac;
     } catch(e){
-        console.log('rawBodyError', e);
+        console.log(getDate()+' rawBodyError', e);
     }
 
     return false;
@@ -345,9 +345,6 @@ async function insertAccessToken(shop, accessToken){
 }
 
 async function dbConnect(type, headers, body){
-    if(DEBUG_MODE === 'true'){
-        console.log('dbConnect', body);
-    }
     let method,
         name,
         endpoint,
@@ -374,6 +371,13 @@ async function dbConnect(type, headers, body){
             break;
     }
 
+    const requestOptions = {
+        'method': method,
+        'name': name,
+        'endpoint': endpoint,
+        'fetchOptions': fetchOptions
+    }
+
     const dbConnectResponse = await fetch(endpoint, fetchOptions);
 
     if(name === 'InsertToken'){
@@ -384,7 +388,7 @@ async function dbConnect(type, headers, body){
     }
 
     try {
-        return await dbConnectResponse.json();
+        return await getResponseJsonAndSaveLogs('dbConnect', requestOptions, dbConnectResponse);
     } catch (e){
         throw new Error(e);
     }
@@ -400,10 +404,10 @@ async function sendOrderToUps(shop){
         body: JSON.stringify({'shop': shop})
     });
     try {
-        const shippingDataJson = await shippingDataResponse.json();
+        const shippingDataJson = await getResponseJsonAndSaveLogs('sendOrderToUps', {'shop': shop}, shippingDataResponse);
         return shippingDataJson.metafields.filter((item) => item.namespace === 'pickups-integration');
     } catch (e) {
-        console.log('sendOrderToUps Error:', e);
+        console.log(getDate()+' sendOrderToUps Error:', e);
         return {'error': true, 'message': 'sendOrderToUps Error:'+e };
     }
 }
@@ -493,7 +497,7 @@ async function getClosestPoints(shop, shippingData, customerShippingAddress, poi
         return { 'response': data['Points'], 'accuracy': {'value': closestPointsAccuracy, 'label': getAccuracyLabel(closestPointsAccuracy)} };
 
     } catch (e) {
-        console.log('getClosestPoints Error: ',e);
+        console.log(getDate()+' getClosestPoints Error: ',e);
         return { 'errors': e }
     }
 }
@@ -549,6 +553,40 @@ function getAccuracyCodeLabel(code){
     }
 }
 
+async function getResponseJsonAndSaveLogs(route, request, response, type = ''){
+    try {
+        const responseStatus = response.status;
+        if(responseStatus === 200 || responseStatus === 201) {
+            if(type === 'text'){
+                return await response.text();
+            }
+            return await response.json();
+        }else{
+            const responseText = await response.text();
+            throw Error('Response Error Code: '+responseStatus+', ErrorText: '+response.statusText+', response:'+responseText)
+        }
+    } catch (e) {
+        if(DEBUG_MODE === 'true'){
+            console.log(getDate()+' REQUEST '+route ,request);
+        }
+        console.log(getDate()+' ERROR '+route ,e);
+
+        throw Error(e);
+    }
+}
+
+function timePad(number) {
+    if ( number < 10 ) {
+        return '0' + number;
+    }
+    return number;
+}
+
+function getDate(){
+    const date = new Date();
+    return '['+timePad(date.getFullYear()) + '-' + timePad(date.getMonth()+1) + '-' + timePad(date.getDate()) + ' ' + timePad(date.getHours()) + ':' + timePad(date.getMinutes()) + ':' + timePad(date.getSeconds())+']';
+}
+
 module.exports = {
     getShopifyRequestHeaders,
     getIntegrationData,
@@ -571,5 +609,7 @@ module.exports = {
     updatedMetafields,
     orderClosestPointsWhileSendToUpsIsEnabled,
     getShippingData,
-    getClosestPoints
+    getClosestPoints,
+    getResponseJsonAndSaveLogs,
+    getDate
 }

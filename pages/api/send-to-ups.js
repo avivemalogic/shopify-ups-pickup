@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod } = require('../../server/helper');
+const { saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -281,7 +281,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
                     try {
                         await saveOrderPickupPoint(shop, orderOriginalId, pickupPoint, false);
                     } catch (e) {
-                        console.log('Error: '+e)
+                        console.log(getDate()+' Error: '+e)
                     }
                 }
             }
@@ -308,13 +308,13 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     try {
         const response = await fetch(apiUrl, requestOptions);
 
-        const data = await response.json();
+        const data = await getResponseJsonAndSaveLogs('restApiSendToUps', requestOptions, response);
 
         if(!data){
             throw 'Api Return Empty Response';
         }
 
-        if (data['Message'] || data['ErrorCode'] > 0) {
+        if (data['Message'] || data['ErrorCode'] > 0 || data['ErrorCode'] === -1) {
             throw data['Message'] || data['ErrorMessage'];
         }
 
@@ -327,9 +327,9 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
             trackingNumber = data['TrackingNumber'];
         }
     } catch (e) {
-        console.log('restApiSendToUps apiUrl: ',apiUrl);
-        console.log('restApiSendToUps requestOptions: ',requestOptions);
-        console.log('restApiSendToUps Error: ',e);
+        console.log(getDate()+' restApiSendToUps apiUrl: ',apiUrl);
+        console.log(getDate()+' restApiSendToUps requestOptions: ',requestOptions);
+        console.log(getDate()+' restApiSendToUps Error: ',e);
         return { 'errors': e }
     }
 

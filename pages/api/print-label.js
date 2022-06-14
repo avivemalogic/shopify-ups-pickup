@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { updatedMetafields, mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac } = require('../../server/helper');
+const { updatedMetafields, mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
 
 async function getWayBillNumber(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -27,7 +27,7 @@ async function getWayBillNumber(shop, orderId){
 
         return wayBillNumber;
     } catch (e){
-        console.log('getWayBillNumber Error: ', e);
+        console.log(getDate()+' getWayBillNumber Error: ', e);
         return '';
     }
 }

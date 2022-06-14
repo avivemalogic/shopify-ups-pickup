@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { HOST, API_VERSION } = process.env;
-const { getShopifyRequestHeaders } = require('./helper');
+const { getShopifyRequestHeaders, getResponseJsonAndSaveLogs, getDate } = require('./helper');
 const shippingDataFieldsObject = require('../data/shipping_data_fields.json')
 const PLUGIN_FIELDS_VERSION = "1.1.3";
 
@@ -30,7 +30,7 @@ async function createPickUpsOptions(shop, accessToken, install = false){
                 "namespace": "pickups-options",
                 "key": "latestInstallation",
                 "value": new Date().toDateString(),
-                "value_type": "string"
+                "type": "string"
             });
         }else {
             const currentFieldsVersion = shippingDataMetafields.find((item) => item.key === 'fieldsVersion');
@@ -40,11 +40,14 @@ async function createPickUpsOptions(shop, accessToken, install = false){
         }
 
         shippingDataFieldsObject.forEach(async (item) => {
-            if(item.key !== 'closestPointsMaxPrice' && item.key !== 'closestPointsMaxAmount' && item.key !== 'upsApiUrl' && item.key !== 'upsApiCreateUrl' && item.key !== 'fieldsVersion' && shippingDataMetafields !== null){
-                if(shippingDataMetafields.find((field) => field.key === item.key) !== undefined){
-                    return;
-                }
+            if(shippingDataMetafields === null || item.key === 'closestPointsMaxPrice' || item.key === 'closestPointsMaxAmount' || item.key === 'upsApiUrl' || item.key === 'upsApiCreateUrl'){
+                return;
             }
+
+            if(item.key !== 'fieldsVersion' && shippingDataMetafields.find((field) => field.key === item.key) !== undefined){
+                return;
+            }
+
             const shippingDataRequestOptions = {
                 method: 'POST',
                 headers: getShopifyRequestHeaders(accessToken),
@@ -54,12 +57,15 @@ async function createPickUpsOptions(shop, accessToken, install = false){
                             "namespace": item.namespace,
                             "key": item.key,
                             "value": item.value,
-                            "value_type": item.value_type
+                            "type": item.type
                         }
                 })
             };
             try {
-                await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json`, shippingDataRequestOptions);
+                const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json`, shippingDataRequestOptions);
+
+                await getResponseJsonAndSaveLogs('createPickUpsOptions', shippingDataRequestOptions, response);
+
             } catch (e){
                 throw new Error(e);
             }
@@ -89,7 +95,7 @@ async function addPickupPointScripts(shop, accessToken){
             return;
         }
     } catch (e){
-        console.log('pickupPointGetScriptRequestOptions Error: ', e);
+        console.log(getDate()+' pickupPointGetScriptRequestOptions Error: ', e);
     }
 
     const pickupPointScriptRequestOptions = {
@@ -105,7 +111,9 @@ async function addPickupPointScripts(shop, accessToken){
     };
 
     try {
-        await fetch(`https://${shop}/admin/api/${API_VERSION}/script_tags.json`, pickupPointScriptRequestOptions);
+        const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/script_tags.json`, pickupPointScriptRequestOptions);
+
+        await getResponseJsonAndSaveLogs('addPickupPointScripts', pickupPointScriptRequestOptions, response);
     } catch (e){
         throw new Error(e);
     }
@@ -131,9 +139,8 @@ async function addCarriersService(shop, accessToken){
 
     try {
         const addCarriersServiceResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/carrier_services.json`, carrierServicesRequestOptions);
-        const addCarriersServiceJson = await addCarriersServiceResponse.json();
 
-        console.log('addCarriersServiceJson', addCarriersServiceJson)
+        await getResponseJsonAndSaveLogs('addCarriersService', carrierServicesRequestOptions, addCarriersServiceResponse);
     } catch (e){
         throw new Error(e);
     }
@@ -153,7 +160,9 @@ async function createWebhook(topic, address, shop, accessToken){
     };
 
     try {
-        await fetch(`https://${shop}/admin/api/${API_VERSION}/webhooks.json`, webhookRequestOptions);
+        const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/webhooks.json`, webhookRequestOptions);
+
+        await getResponseJsonAndSaveLogs('createWebhook', webhookRequestOptions, response);
     } catch (e){
         throw new Error(e);
     }

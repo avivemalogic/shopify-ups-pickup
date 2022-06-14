@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { updatedMetafields, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod } = require('../../server/helper');
+const { updatedMetafields, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -220,7 +220,7 @@ async function restApiImportWaybillFromLeadId(accessToken, integrationData, getO
         trackingNumber = data[0]['TrackNumber'];
 
     } catch (e) {
-        console.log('restApiImportWaybillFromLeadId Error: ',e);
+        console.log(getDate()+' restApiImportWaybillFromLeadId Error: ',e);
         return { 'errors': e }
     }
 

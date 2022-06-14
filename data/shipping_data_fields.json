@@ -3,155 +3,155 @@
     "namespace": "pickups-options",
     "key": "fieldsVersion",
     "value": "1.1.3",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-options",
     "key": "upsPickupsType",
     "value": "all",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-options",
     "key": "upsPickupsMapType",
     "value": "test",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-options",
     "key": "upsPickupsOpenMapOnLoad",
     "value": "false",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-options",
     "key": "upsPickupsChangePickupPoint",
     "value": "false",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "enableOrderIntegration",
     "value": "true",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "upsApiCreateUrl",
     "value": "https://plugins.ship.co.il/",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "upsApiUrl",
     "value": "https://api.ship.co.il/",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "upsIntegrationUsername",
     "value": "example@ups.co.il",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "upsIntegrationPassword",
     "value": "API Password",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "upsIntegrationScope",
     "value": "API Scope",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "upsIntegrationReference2",
     "value": "none",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "upsIntegrationOrderWeight",
     "value": "items",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "upsIntegrationOrderWeightValue",
     "value": "0",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "orderIntegrationAutomatic",
     "value": "false",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "fulfillOrderItems",
     "value": "false",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "fulfillOrderItemsNotify",
     "value": "false",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-closest",
     "key": "closestPointsEnabled",
     "value": "false",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-closest",
     "key": "closestPointsPrice",
     "value": "X",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-closest",
     "key": "closestPointsMaxPrice",
     "value": "X",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-closest",
     "key": "closestPointsMaxAmount",
     "value": "X",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-closest",
     "key": "closestPointsNumber",
     "value": 3,
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-closest",
     "key": "closestPointsAccuracy",
     "value": "city",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-closest",
     "key": "closestPointsTitle",
     "value": "X",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-closest",
     "key": "closestPointsMaxWeight",
     "value": "X",
-    "value_type": "string"
+    "type": "string"
   },
   {
     "namespace": "pickups-integration",
     "key": "orderIntegrationClosestPoints",
     "value": "false",
-    "value_type": "string"
+    "type": "string"
   }]

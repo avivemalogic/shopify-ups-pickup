@@ -95,7 +95,7 @@ class Index extends Component {
                         'id': item.id,
                         'namespace': item.namespace,
                         'value': item.value,
-                        'value_type': item.value_type
+                        'type': item.type
                     }
                 })
             })
