@@ -15,8 +15,12 @@ router.get('/', async (ctx, next) => {
     ctx.state = { shopify: { shop: shop, accessToken: token } };
     await verifyToken(ctx, next);
 
-    if(shop) {
-        await createPickUpsOptions(shop, token);
+    if(shop && ctx.request.query.session) {
+        try {
+            await createPickUpsOptions(shop, token);
+        } catch (e) {
+            console.log(e);
+        }
     }
 });
 
