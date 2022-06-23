@@ -147,9 +147,13 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
         await autoSendToUps(shop, orderId);
     }
 
+    const order = await getOrderData(shop, orderId);
+
+    const orderNote = order.order.note ? `${order.order.note}\r\n` : '';
+
     const pickupPointObject = JSON.parse(pickupPoint);
 
-    let pickupNote = `${pickupPointObject['iid']}\r\n${pickupPointObject['title']}`;
+    let pickupNote = `${orderNote}${pickupPointObject['iid']}\r\n${pickupPointObject['title']}`;
 
     if(pickupPointObject['city']){
         pickupNote += `\r\n${pickupPointObject['street']}, ${pickupPointObject['city']}`;

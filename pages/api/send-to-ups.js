@@ -157,17 +157,17 @@ function getReference2Field(reference2Type, order, orderPickupsData, shippingDat
 
     switch(reference2Type){
         case 'order_id':
-            return order.name.replace('#', '');
+            return order.name.replace('#', '') || '';
         case 'customer_name':
-            return getCustomerName(order);
+            return getCustomerName(order) || '';
         case 'email':
-            return order.email;
+            return order.email || '';
         case 'phone_number':
-            return validatePhoneNumber(getPhoneNumber(order));
+            return validatePhoneNumber(getPhoneNumber(order)) || '';
         case 'pickup_point_id':
-            return pickupPointId;
+            return pickupPointId || '';
         case 'pickup_point_name':
-            return pickupPointTitle.replace(serviceName+' - ', '');
+            return pickupPointTitle.replace(serviceName+' - ', '') || '';
         default:
             return '';
     }
@@ -263,6 +263,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
                 };
                 const closestPoint = await getClosestPoints(shop, shippingData, customerShippingAddress, 1);
 
+                console.log('closestPoint', closestPoint);
                 if(closestPoint['errors']){
                     return {
                         'errors': closestPoint['errors']

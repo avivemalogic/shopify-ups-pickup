@@ -481,12 +481,14 @@ async function getClosestPoints(shop, shippingData, customerShippingAddress, poi
             }
         });
         const data = await getClosestPointsResponse.json();
+
         if(!data){
             throw 'Api Return Empty Response';
         }
 
         if(data['IsSuccessful'] !== true){
-            throw data['ErrorMSG'];
+            console.log('getClosestPoints Error', data);
+            throw data['ErrorMSG'] || 'Unknown Error';
         }
 
         const accuracyCodes = getAccuracyCode(closestPointsAccuracy);
