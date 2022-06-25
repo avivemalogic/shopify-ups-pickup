@@ -13,8 +13,10 @@ import {
     TextStyle,
     Frame,
     Loading,
-    InlineError
+    InlineError,
+    Icon
 } from '@shopify/polaris';
+import { CircleTickMajor } from "@shopify/polaris-icons";
 import React, { Component } from 'react';
 
 class Index extends Component {
@@ -51,7 +53,9 @@ class Index extends Component {
             'closestPointsMaxWeight': {},
             'closestPointsNumber': {},
             'closestPointsAccuracy': {},
-            'closestPointsTitle': {}
+            'closestPointsTitle': {},
+            'isAuthValid': false,
+            'customerType': null
         };
     }
 
@@ -68,7 +72,7 @@ class Index extends Component {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({'shop': shop, 'isPrivate': true})
+                body: JSON.stringify({'shop': shop, 'isPrivate': true, 'checkAuthInformation': true})
             });
             const json = await response.json();
 
@@ -98,6 +102,13 @@ class Index extends Component {
                         'type': item.type
                     }
                 })
+            })
+        }
+
+        if(this.props.data.isAuthValid){
+            this.setState({
+                'isAuthValid': this.props.data.isAuthValid,
+                'customerType': this.props.data.customerType
             })
         }
     }
@@ -323,6 +334,9 @@ class Index extends Component {
                                     label="REST Api Password"
                                     type="text"
                                 />
+                                <div style={{marginTop: '10px', direction: 'rtl'}}>
+                                    { state.isAuthValid ? <div><div style={{display: 'flex'}}><Icon color="success" source={CircleTickMajor} /><span style={{flexGrow: '1', marginRight: '10px'}}>פרטי ההתחברות תקינים</span></div><div style={{marginRight: '30px'}}>סוג לקוח: {state.customerType}</div></div> : <InlineError message="פרטי ההתחברות לא נכונים" /> }
+                                </div>
                             </Card>
                             <Card sectioned>
                                 <TextField

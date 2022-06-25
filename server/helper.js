@@ -201,6 +201,42 @@ async function getRestApiAccessToken(integrationData, type){
     }
 }
 
+async function getCustomerTypeApi(integrationData){
+    const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData, 'create');
+    if (!isLoggedIn) {
+        return { 'errors': 'Auth Error' }
+    }
+
+    const apiUrl = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl') + 'api/v1/easyship/is-credit-customer';
+
+    const requestOptions = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + accessToken
+        }
+    };
+
+    try {
+        const response = await fetch(apiUrl, requestOptions);
+        const data = await getResponseJsonAndSaveLogs('getCustomerTypeApi', requestOptions, response, 'text');
+
+        if(!data){
+            throw 'Api Return Empty Response';
+        }
+
+        if(data['Message']){
+            throw data['Message'] || data['Result']['ErrorMessage'];
+        }
+
+        return { 'response': data['IsCreditDomestic'] === true ? 'אשראי' : 'מזומן' };
+
+    } catch (e) {
+        console.log(getDate()+' getCustomerTypeApi Error: ',e);
+        return { 'errors': e }
+    }
+}
+
 async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, format){
     const apiUrl = getFieldFromIntegrationData(integrationData,'upsApiUrl') + 'api/v1/shipments/PrintWBOrderDetails';
     const functionArgs = {
@@ -613,5 +649,6 @@ module.exports = {
     getShippingData,
     getClosestPoints,
     getResponseJsonAndSaveLogs,
-    getDate
+    getDate,
+    getCustomerTypeApi
 }

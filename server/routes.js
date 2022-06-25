@@ -5,7 +5,7 @@ const Router = require('koa-router');
 const router = new Router();
 const bodyParser = require('koa-bodyparser');
 const { verifyToken, getQueryKey } = require("koa-shopify-auth-cookieless");
-const { verifyHmacWebhook, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps } = require('./helper');
+const { verifyHmacWebhook, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps, getCustomerTypeApi } = require('./helper');
 const { createPickUpsOptions } = require('./init');
 const { HOST, API_VERSION,DEBUG_MODE } = process.env;
 
@@ -73,6 +73,7 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;
     const isPrivate = data.isPrivate;
+    const checkAuthInformation = data.checkAuthInformation || false;
 
     const accessToken = await getAccessToken(shop);
 
@@ -91,6 +92,21 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
 
         if (!isPrivate) {
             dataJson.metafields = dataJson.metafields.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad' || item.key === 'upsPickupsChangePickupPoint')
+        }
+
+        if(checkAuthInformation){
+            const integrationData = dataJson.metafields.filter((item) => item.namespace === 'pickups-integration');
+            const customerTypeResponse = await getCustomerTypeApi(integrationData);
+
+            let isAuthValid = false;
+            let customerType = 'מזומן';
+            if(customerTypeResponse['response']){
+                isAuthValid = true;
+                customerType = customerTypeResponse['response'];
+            }
+
+            dataJson.isAuthValid = isAuthValid;
+            dataJson.customerType = customerType;
         }
     }
 
