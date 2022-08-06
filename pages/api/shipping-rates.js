@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { getClosestPoints, getFieldFromIntegrationData, getRestApiAccessToken } = require('../../server/helper');
+const { getClosestPoints, getDate } = require('../../server/helper');
 
 function getAvailableRates(data, serviceNamePrefix, price){
     const arr = [];
@@ -27,6 +27,7 @@ function getAvailableRates(data, serviceNamePrefix, price){
 
 export default async (req, res) => {
     const shop = req.headers['x-shopify-shop-domain'];
+    console.log(getDate()+' shipping-rates shop: '+shop+' | init');
     const customerShippingAddress = req.body.rate.destination;
 
     res.statusCode = 200;
@@ -35,6 +36,7 @@ export default async (req, res) => {
         return res.end('Shop not Found');
     }
 
+    console.log(getDate()+' shipping-rates shop: '+shop+' | before get-shipping-data');
     const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
         method: 'POST',
         headers: {
@@ -43,7 +45,9 @@ export default async (req, res) => {
         },
         body: JSON.stringify({'shop': shop, 'isPrivate': true})
     });
+    console.log(getDate()+' shipping-rates shop: '+shop+' | after get-shipping-data');
     const shippingDataJson = await shippingDataResponse.json();
+    console.log(getDate()+' shipping-rates shop: '+shop+' | after get-shipping-data json');
     const shippingDataFields = shippingDataJson.metafields;
 
     const isEnabled = shippingDataFields.find((item) => item.key === 'closestPointsEnabled').value;
@@ -73,19 +77,26 @@ export default async (req, res) => {
     }
 
     try {
+        console.log(getDate()+' shipping-rates shop: '+shop+' | before get-closest-points');
         const data = await getClosestPoints(shop, shippingDataJson, customerShippingAddress);
+        console.log(getDate()+' shipping-rates shop: '+shop+' | after get-closest-points');
 
         if(data['errors']){
+            console.log(getDate()+' shipping-rates shop: '+shop+' | errors: ', data);
             return res.end(data['errors']);
         }
+
+        console.log(getDate()+' shipping-rates shop: '+shop+' | before getAvailableRates');
 
         const output = {
             "rates": getAvailableRates(data['response'], serviceName, price)
         };
 
+        console.log(getDate()+' shipping-rates shop: '+shop+' | after getAvailableRates');
+
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(output))
     } catch (e){
-        return res.end(e);
+        return res.end(JSON.stringify(e));
     }
 }

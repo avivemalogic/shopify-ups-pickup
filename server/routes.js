@@ -5,7 +5,7 @@ const Router = require('koa-router');
 const router = new Router();
 const bodyParser = require('koa-bodyparser');
 const { verifyToken, getQueryKey } = require("koa-shopify-auth-cookieless");
-const { verifyHmacWebhook, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps, getCustomerTypeApi } = require('./helper');
+const { verifyHmacWebhook, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps, getCustomerTypeApi, getDate } = require('./helper');
 const { createPickUpsOptions } = require('./init');
 const { HOST, API_VERSION,DEBUG_MODE } = process.env;
 
@@ -75,16 +75,21 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     const isPrivate = data.isPrivate;
     const checkAuthInformation = data.checkAuthInformation || false;
 
+    console.log(getDate()+' get-shipping-data shop: '+shop+' | before getAccessToken');
     const accessToken = await getAccessToken(shop);
+    console.log(getDate()+' get-shipping-data shop: '+shop+' | after getAccessToken');
 
     const requestOptions = {
         method: 'GET',
         headers: getShopifyRequestHeaders(accessToken)
     };
 
+    console.log(getDate()+' get-shipping-data shop: '+shop+' | before fetch');
     const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?limit=250&metafield[owner_resource]=shop`, requestOptions);
-
+    console.log(getDate()+' get-shipping-data shop: '+shop+' | after fetch');
+    console.log(getDate()+' get-shipping-data shop: '+shop+' | before getResponseJsonAndSaveLogs');
     const dataJson = await getResponseJsonAndSaveLogs('get-shipping-data', requestOptions ,response);
+    console.log(getDate()+' get-shipping-data shop: '+shop+' | after getResponseJsonAndSaveLogs');
 
     if(dataJson.metafields !== undefined) {
 
@@ -494,14 +499,18 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
     const hmac = headers['x-shopify-hmac-sha256'];
     const errorPrefix = 'Auto Send to Ups: ';
 
+    console.log(getDate()+' webhook/order-create shop: '+shop+' | init');
+
     if(headers['x-shopify-topic'] !== 'orders/create'){
         throw new Error(`${errorPrefix} topic is wrong`);
     }
 
     try {
+        console.log(getDate()+' webhook/order-create shop: '+shop+' | before verifyHmacWebhook');
         if(!await verifyHmacWebhook(rawBody, hmac)){
             throw new Error('hmac is not verified');
         }
+        console.log(getDate()+' webhook/order-create shop: '+shop+' | after verifyHmacWebhook');
 
         const orderId = body.id;
         const shippingMethod = body.shipping_lines[0];
@@ -517,20 +526,26 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
         }
         const isPickups = body.shipping_lines.findIndex((item) => isPickUpsShippingMethod(item.code));
 
+        console.log(getDate()+' webhook/order-create shop: '+shop+' | before getOrderData');
         const orderData = await getOrderData(shop, orderId);
+        console.log(getDate()+' webhook/order-create shop: '+shop+' | after getOrderData');
         const pickupPoint = closestPointsChosenPoint ? closestPointsChosenPoint : orderData.order.note;
 
         if(pickupPoint !== '' && pickupPoint !== null) {
             try {
                 if(isPickups > -1) {
+                    console.log(getDate()+' webhook/order-create shop: '+shop+' | before saveOrderPickupPoint');
                     await saveOrderPickupPoint(shop, orderId, pickupPoint, true);
+                    console.log(getDate()+' webhook/order-create shop: '+shop+' | after saveOrderPickupPoint');
                 }
             } catch (e) {
                 console.log('Error: '+e)
             }
         }
 
+        console.log(getDate()+' webhook/order-create shop: '+shop+' | before getIntegrationData');
         const integrationData = await getIntegrationData(shop);
+        console.log(getDate()+' webhook/order-create shop: '+shop+' | after getIntegrationData');
         if (integrationData['error']) {
             throw new Error(integrationData['message']);
         }
@@ -543,6 +558,7 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
 
         if(isPickups === -1){
             try {
+                console.log(getDate()+' webhook/order-create shop: '+shop+' | before auto-send-to-ups');
                 await fetch(`${HOST}api/send-to-ups?shop=${shop}&id=${orderId}&automatic=true`, {
                     method: 'GET',
                     headers: {
@@ -550,6 +566,7 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
                         'Content-Type': 'application/json'
                     }
                 });
+                console.log(getDate()+' webhook/order-create shop: '+shop+' | after auto-send-to-ups');
             } catch (e) {
                 throw new Error(e);
             }

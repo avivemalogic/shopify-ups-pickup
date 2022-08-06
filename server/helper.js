@@ -601,7 +601,7 @@ async function getResponseJsonAndSaveLogs(route, request, response, type = ''){
             return await response.json();
         }else{
             const responseText = await response.text();
-            throw Error('Response Error Code: '+responseStatus+', ErrorText: '+response.statusText+', response:'+responseText)
+            throw Error(getDate()+' ERROR '+route+' Response Error Code: '+responseStatus+', ErrorText: '+response.statusText+', response:'+responseText)
         }
     } catch (e) {
         if(DEBUG_MODE === 'true'){
