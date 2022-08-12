@@ -38,7 +38,7 @@ app.prepare().then(() => {
         createShopifyAuth({
             apiKey: SHOPIFY_API_KEY,
             secret: SHOPIFY_API_SECRET_KEY,
-            scopes: ['write_orders','write_script_tags', 'write_shipping'],
+            scopes: ['write_orders','write_script_tags', 'write_shipping', 'read_products'],
             accessMode: 'offline',
             async afterAuth(ctx) {
                 const { shop, accessToken } = ctx.state.shopify;

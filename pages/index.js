@@ -47,6 +47,7 @@ class Index extends Component {
             'orderIntegrationAutomatic': {},
             'orderIntegrationClosestPoints': {},
             'closestPointsEnabled': {},
+            'productFreeShippingEnabled': {},
             'closestPointsPrice': {},
             'closestPointsMaxPrice': {},
             'closestPointsMaxAmount': {},
@@ -266,6 +267,14 @@ class Index extends Component {
                                         options={closestPointsAccuracyOptions}
                                     />
                                 </Card>
+                                <SettingToggle
+                                    action={{
+                                        content: state.productFreeShippingEnabled.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                        onAction: this.toggleProductFreeShippingEnabled,
+                                    }}
+                                    enabled={state.productFreeShippingEnabled.value} >
+                                    Products Free Shipping Tag is <TextStyle variation="strong">{state.productFreeShippingEnabled.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                                </SettingToggle>
                             </div>
                         }
                     </Layout.AnnotatedSection>
@@ -491,6 +500,9 @@ class Index extends Component {
     };
     toggleClosestPointsEnabled = () => {
         this.handleToggle('closestPointsEnabled');
+    };
+    toggleProductFreeShippingEnabled = () => {
+        this.handleToggle('productFreeShippingEnabled');
     };
     toggleChangePickupPoint = () => {
         this.handleToggle('upsPickupsChangePickupPoint');

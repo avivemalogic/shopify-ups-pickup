@@ -119,6 +119,24 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     ctx.statusCode = 200;
 });
 
+router.post('/api/get-product-data', bodyParser(), async (ctx, next) => {
+    const data = ctx.request.body;
+    const shop = data.shop;
+    const productId = data.productId;
+
+    const accessToken = await getAccessToken(shop);
+
+    const requestOptions = {
+        method: 'GET',
+        headers: getShopifyRequestHeaders(accessToken)
+    };
+
+    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/products/${productId}.json`, requestOptions);
+
+    ctx.body = await getResponseJsonAndSaveLogs('get-product-data', requestOptions, response);
+    ctx.statusCode = 200;
+});
+
 router.post('/api/get-order-pickup-point', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;

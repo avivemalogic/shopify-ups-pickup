@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { getClosestPoints, getDate } = require('../../server/helper');
+const { getClosestPoints, getProductData, getDate } = require('../../server/helper');
 
 function getAvailableRates(data, serviceNamePrefix, price){
     const arr = [];
@@ -56,8 +56,11 @@ export default async (req, res) => {
     const methodPriceAfterMaxAmount = shippingDataFields.find((item) => item.key === 'closestPointsMaxPrice').value;
     const methodMaxAmount = shippingDataFields.find((item) => item.key === 'closestPointsMaxAmount').value;
     const methodMaxWeight = shippingDataFields.find((item) => item.key === 'closestPointsMaxWeight').value;
-    const itemsTotalPrice = req.body.rate.items.reduce( ( sum, { price, quantity } ) => sum + (price * quantity) , 0);
-    const itemsTotalWeightGrams = req.body.rate.items.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
+    const productFreeShippingEnabled = shippingDataFields.find((item) => item.key === 'productFreeShippingEnabled');
+    const isProductFreeShippingEnabled = productFreeShippingEnabled !== undefined ? productFreeShippingEnabled.value : '';
+    const cartItems = req.body.rate.items;
+    const itemsTotalPrice = cartItems.reduce( ( sum, { price, quantity } ) => sum + (price * quantity) , 0);
+    const itemsTotalWeightGrams = cartItems.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
 
     if(isEnabled !== 'true' || !methodPrice || methodPrice === 'X') {
         return res.end('Closest Points is Disabled');
@@ -74,6 +77,31 @@ export default async (req, res) => {
             console.log(errorMessage);
             return res.end(errorMessage);
         }
+    }
+
+    let freeShipping = false;
+    if(isProductFreeShippingEnabled === 'true'){
+        for(let i = 0, iLength = cartItems.length; i < iLength; ++i){
+            const productId = cartItems[i].product_id;
+
+            const productData = await getProductData(shop, productId);
+            try {
+                const productTagIsFreeShipping = productData.product.tags.includes('pickups_free');
+                if(productTagIsFreeShipping){
+                    freeShipping = true
+                }else{
+                    freeShipping = false;
+                    break;
+                }
+            } catch (e) {
+                freeShipping = false;
+                break;
+            }
+        }
+    }
+
+    if(freeShipping){
+        price = 0;
     }
 
     try {

@@ -48,6 +48,24 @@ async function getShippingData(shop){
     }
 }
 
+async function getProductData(shop, productId){
+    const productDataResponse = await fetch(`${HOST}api/get-product-data`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop, 'productId': productId})
+    });
+
+    try {
+        return await productDataResponse.json();
+    } catch (e) {
+        console.log(getDate()+' getProductData Error:', e);
+        return {'error': true, 'message': 'getProductData Error:'+e };
+    }
+}
+
 async function getIntegrationData(shop){
     try {
         const shippingDataJson = await getShippingData(shop);
@@ -501,7 +519,7 @@ async function getClosestPoints(shop, shippingData, customerShippingAddress, poi
     let functionArgs = {
         'city': customerShippingAddress.city || '',
         'street': customerShippingAddress.address1,
-        'houseNumber': customerShippingAddress.address2 || 0,
+        'houseNumber': '',
         'pointTypes': pointTypes,
         'points': points
     }
@@ -650,5 +668,6 @@ module.exports = {
     getClosestPoints,
     getResponseJsonAndSaveLogs,
     getDate,
-    getCustomerTypeApi
+    getCustomerTypeApi,
+    getProductData
 }
