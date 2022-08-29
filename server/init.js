@@ -40,7 +40,7 @@ async function createPickUpsOptions(shop, accessToken, install = false){
         }
 
         shippingDataFieldsObject.forEach(async (item) => {
-            if(shippingDataMetafields === null || item.key === 'closestPointsMaxPrice' || item.key === 'closestPointsMaxAmount' || item.key === 'upsApiUrl' || item.key === 'upsApiCreateUrl'){
+            if(shippingDataMetafields === null){
                 return;
             }
 

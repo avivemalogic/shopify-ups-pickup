@@ -5,7 +5,7 @@ const Router = require('koa-router');
 const router = new Router();
 const bodyParser = require('koa-bodyparser');
 const { verifyToken, getQueryKey } = require("koa-shopify-auth-cookieless");
-const { verifyHmacWebhook, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps, getCustomerTypeApi, getDate } = require('./helper');
+const { verifyHmacWebhook, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps, getCustomerTypeApi, getDate, getMetafieldsCount } = require('./helper');
 const { createPickUpsOptions } = require('./init');
 const { HOST, API_VERSION,DEBUG_MODE } = process.env;
 
@@ -75,39 +75,48 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     const isPrivate = data.isPrivate;
     const checkAuthInformation = data.checkAuthInformation || false;
 
-    console.log(getDate()+' get-shipping-data shop: '+shop+' | before getAccessToken');
     const accessToken = await getAccessToken(shop);
-    console.log(getDate()+' get-shipping-data shop: '+shop+' | after getAccessToken');
 
     const requestOptions = {
         method: 'GET',
         headers: getShopifyRequestHeaders(accessToken)
     };
 
-    console.log(getDate()+' get-shipping-data shop: '+shop+' | before fetch');
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?limit=250&metafield[owner_resource]=shop`, requestOptions);
-    console.log(getDate()+' get-shipping-data shop: '+shop+' | after fetch');
-    console.log(getDate()+' get-shipping-data shop: '+shop+' | before getResponseJsonAndSaveLogs');
+    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?metafield[owner_resource]=shop`, requestOptions);
     const dataJson = await getResponseJsonAndSaveLogs('get-shipping-data', requestOptions ,response);
-    console.log(getDate()+' get-shipping-data shop: '+shop+' | after getResponseJsonAndSaveLogs');
+
+    const responseIntegration = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?namespace=pickups-integration&metafield[owner_resource]=shop`, requestOptions);
+    const dataJsonIntegration = await getResponseJsonAndSaveLogs('get-shipping-data', requestOptions ,responseIntegration);
+
+    const responseClosest = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?namespace=pickups-closest&metafield[owner_resource]=shop`, requestOptions);
+    const dataJsonClosest = await getResponseJsonAndSaveLogs('get-shipping-data', requestOptions ,responseClosest);
 
     if(dataJson.metafields !== undefined) {
+        let metafieldsArray = dataJson.metafields;
+        try {
+            metafieldsArray = metafieldsArray.concat(dataJsonIntegration.metafields, dataJsonClosest.metafields);
+        } catch (e){
 
-        dataJson.metafields = dataJson.metafields.filter((item) => item.namespace.includes('pickups-'));
+        }
 
         if (!isPrivate) {
-            dataJson.metafields = dataJson.metafields.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad' || item.key === 'upsPickupsChangePickupPoint')
+            metafieldsArray = metafieldsArray.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad' || item.key === 'upsPickupsChangePickupPoint')
         }
 
         if(checkAuthInformation){
-            const integrationData = dataJson.metafields.filter((item) => item.namespace === 'pickups-integration');
+            const integrationData = metafieldsArray.filter((item) => item.namespace === 'pickups-integration');
             const customerTypeResponse = await getCustomerTypeApi(integrationData);
 
-            let isAuthValid = false;
-            let customerType = 'מזומן';
+            let isAuthValid = 'error';
+            let customerType = '';
+
+            if(!customerTypeResponse['errors']){
+                isAuthValid = false
+            }
+
             if(customerTypeResponse['response']){
                 isAuthValid = true;
-                customerType = customerTypeResponse['response'];
+                customerType = customerTypeResponse['response'] || 'מזומן';
             }
 
             dataJson.isAuthValid = isAuthValid;

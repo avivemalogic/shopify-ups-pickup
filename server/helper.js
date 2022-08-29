@@ -243,11 +243,13 @@ async function getCustomerTypeApi(integrationData){
             throw 'Api Return Empty Response';
         }
 
-        if(data['Message']){
-            throw data['Message'] || data['Result']['ErrorMessage'];
+        const dataJson = JSON.parse(data);
+
+        if(dataJson['Message']){
+            throw dataJson['Message'] || dataJson['Result']['ErrorMessage'];
         }
 
-        return { 'response': data['IsCreditDomestic'] === true ? 'אשראי' : 'מזומן' };
+        return { 'response': dataJson['IsCreditDomestic'] === true ? 'אשראי' : 'מזומן' };
 
     } catch (e) {
         console.log(getDate()+' getCustomerTypeApi Error: ',e);
@@ -342,15 +344,6 @@ function verifyHmac(requestQuery, hmac, isBulkAction){
         const ids = requestQuery['ids[]'];
 
         const idsList = Array.isArray(ids) ? ids.join('", "') : ids;
-
-        const format = requestQuery['format'];
-        if(format) {
-            delete requestQuery['format'];
-            bodyString += `format=${format}&`;
-        }
-
-        bodyString += `host=${requestQuery['host']}&`;
-        delete requestQuery['host'];
 
         bodyString += `ids=["${idsList}"]&`;
 
@@ -631,6 +624,18 @@ async function getResponseJsonAndSaveLogs(route, request, response, type = ''){
     }
 }
 
+async function getMetafieldsCount(shop, requestOptions){
+    try {
+        const metafieldsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields/count.json`, requestOptions);
+        const metafieldsDataJson = await getResponseJsonAndSaveLogs('get-shipping-data metafields', requestOptions, metafieldsResponse);
+
+        return metafieldsDataJson.count;
+    } catch (e){
+        console.log(getDate()+' ERROR getMetafieldsCount ',e);
+        return 0;
+    }
+}
+
 function timePad(number) {
     if ( number < 10 ) {
         return '0' + number;
@@ -669,5 +674,6 @@ module.exports = {
     getResponseJsonAndSaveLogs,
     getDate,
     getCustomerTypeApi,
-    getProductData
+    getProductData,
+    getMetafieldsCount
 }

@@ -167,7 +167,7 @@ function getReference2Field(reference2Type, order, orderPickupsData, shippingDat
         case 'pickup_point_id':
             return pickupPointId || '';
         case 'pickup_point_name':
-            return pickupPointTitle.replace(serviceName+' - ', '') || '';
+            return pickupPointTitle ? pickupPointTitle.replace(serviceName+' - ', '') : '';
         default:
             return '';
     }
@@ -206,11 +206,14 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     const cityName = getOrderJson.order.shipping_address.city;
     const customerZipcode = getOrderJson.order.shipping_address.zip || '';
     let streetAddress = getOrderJson.order.shipping_address.address1;
+    let roomNumber = '';
     if(getOrderJson.order.shipping_address.address2) {
-        streetAddress += getOrderJson.order.shipping_address.address2;
+        roomNumber = getOrderJson.order.shipping_address.address2;
+        streetAddress += ' '+roomNumber;
     }
     const streetName = streetAddress;
-    const houseNumber = getHouseNumber(streetAddress);
+    const houseNumber = getHouseNumber(roomNumber);
+
     const phoneNumber = getPhoneNumber(getOrderJson.order);
     const orderOriginalId = getOrderJson.order.id;
     const orderId = getOrderJson.order.name.substring(1);
@@ -455,6 +458,7 @@ export default async (req, res) => {
 
                 if(isFulfillOrderItemsEnabled(integrationData)) {
                     const fulfillResponse = await fullfillOrderItems(shop, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
+
                     if (fulfillResponse.errors) {
                         output += `<br /> ${fulfillResponse.errors}`;
                     }

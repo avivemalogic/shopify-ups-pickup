@@ -14,7 +14,8 @@ import {
     Frame,
     Loading,
     InlineError,
-    Icon
+    Icon,
+    Spinner
 } from '@shopify/polaris';
 import { CircleTickMajor } from "@shopify/polaris-icons";
 import React, { Component } from 'react';
@@ -73,7 +74,7 @@ class Index extends Component {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({'shop': shop, 'isPrivate': true, 'checkAuthInformation': true})
+                body: JSON.stringify({'shop': shop, 'isPrivate': true})
             });
             const json = await response.json();
 
@@ -112,6 +113,10 @@ class Index extends Component {
                 'customerType': this.props.data.customerType
             })
         }
+
+        this.checkAuthInformation(shop).then(() => {
+            console.log('checkAuthInformation done');
+        });
     }
 
     render() {
@@ -344,7 +349,17 @@ class Index extends Component {
                                     type="text"
                                 />
                                 <div style={{marginTop: '10px', direction: 'rtl'}}>
-                                    { state.isAuthValid ? <div><div style={{display: 'flex'}}><Icon color="success" source={CircleTickMajor} /><span style={{flexGrow: '1', marginRight: '10px'}}>פרטי ההתחברות תקינים</span></div><div style={{marginRight: '30px'}}>סוג לקוח: {state.customerType}</div></div> : <InlineError message="פרטי ההתחברות לא נכונים" /> }
+                                    { state.isLoading ? <div style={{height: '30px'}}><Spinner accessibilityLabel="Spinner example" size="large" /></div> :
+                                    state.isAuthValid === 'error'
+                                        ?
+                                        <InlineError message="שגיאה בבדיקת הפרטים" />
+                                        :
+                                        state.isAuthValid
+                                            ?
+                                            <div><div style={{display: 'flex'}}><Icon color="success" source={CircleTickMajor} /><span style={{flexGrow: '1', marginRight: '10px'}}>פרטי ההתחברות תקינים</span></div><div style={{marginRight: '30px'}}>סוג לקוח: {state.customerType}</div></div>
+                                            :
+                                            <InlineError message="פרטי ההתחברות לא נכונים" />
+                                    }
                                 </div>
                             </Card>
                             <Card sectioned>
@@ -468,12 +483,34 @@ class Index extends Component {
             body: JSON.stringify(object)
         });
 
+        await this.checkAuthInformation(this.state.shop);
+
         this.setState({'isLoading': false})
         this.setState({'isChanged': []});
         this.setState({'savedText': '✔ Saved!'})
 
         setTimeout(() => this.setState({'savedText': ''}), 3000)
     };
+
+    checkAuthInformation = async (shop) => {
+        try {
+            const response = await fetch(`api/get-shipping-data`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({'shop': shop, 'isPrivate': true, 'checkAuthInformation': true})
+            });
+
+            const json = await response.json();
+
+            this.setState({'isAuthValid': json.isAuthValid, 'customerType': json.customerType })
+        } catch (e){
+
+        }
+    };
+
     handleChange = (field, type) => {
         return (val) => {
             if(type === 'number'){

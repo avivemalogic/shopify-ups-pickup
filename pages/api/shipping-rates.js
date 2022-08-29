@@ -86,7 +86,7 @@ export default async (req, res) => {
 
             const productData = await getProductData(shop, productId);
             try {
-                const productTagIsFreeShipping = productData.product.tags.includes('pickups_free');
+                const productTagIsFreeShipping = productData.product.tags.includes('pickup_free');
                 if(productTagIsFreeShipping){
                     freeShipping = true
                 }else{
