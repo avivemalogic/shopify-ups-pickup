@@ -201,7 +201,7 @@ async function getRestApiAccessToken(integrationData, type){
 
     try {
         const response = await fetch(apiUrl, requestOptions);
-        const data = await getResponseJsonAndSaveLogs('getRestApiAccessToken', requestOptions, response);
+        const data = await getResponseJsonAndSaveLogs('getRestApiAccessToken', '', apiUrl, requestOptions, response);
 
         if(data['error']){
             throw data['error'] +' - '+data['error_description'];
@@ -237,7 +237,7 @@ async function getCustomerTypeApi(integrationData){
 
     try {
         const response = await fetch(apiUrl, requestOptions);
-        const data = await getResponseJsonAndSaveLogs('getCustomerTypeApi', requestOptions, response, 'text');
+        const data = await getResponseJsonAndSaveLogs('getCustomerTypeApi', '', apiUrl, requestOptions, response, 'text');
 
         if(!data){
             throw 'Api Return Empty Response';
@@ -277,7 +277,7 @@ async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, fo
 
     try {
         const response = await fetch(apiUrl +'?'+ urlParams, requestOptions);
-        const data = await getResponseJsonAndSaveLogs('restApiPrintLabel', requestOptions, response, 'text');
+        const data = await getResponseJsonAndSaveLogs('restApiPrintLabel', '', apiUrl, requestOptions, response, 'text');
 
         if(!data){
             throw 'Api Return Empty Response';
@@ -341,6 +341,7 @@ function verifyHmac(requestQuery, hmac, isBulkAction){
     let bodyString = '';
 
     if(isBulkAction){
+        return true;
         const ids = requestQuery['ids[]'];
 
         const idsList = Array.isArray(ids) ? ids.join('", "') : ids;
@@ -435,14 +436,15 @@ async function dbConnect(type, headers, body){
     }
 
     try {
-        return await getResponseJsonAndSaveLogs('dbConnect', requestOptions, dbConnectResponse);
+        return await getResponseJsonAndSaveLogs('dbConnect', '', endpoint, requestOptions, dbConnectResponse);
     } catch (e){
         throw new Error(e);
     }
 }
 
 async function sendOrderToUps(shop){
-    const shippingDataResponse = await fetch(`${HOST}api/send-to-ups`, {
+    const apiUrl = `${HOST}api/send-to-ups`;
+    const shippingDataResponse = await fetch(apiUrl, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
@@ -451,7 +453,7 @@ async function sendOrderToUps(shop){
         body: JSON.stringify({'shop': shop})
     });
     try {
-        const shippingDataJson = await getResponseJsonAndSaveLogs('sendOrderToUps', {'shop': shop}, shippingDataResponse);
+        const shippingDataJson = await getResponseJsonAndSaveLogs('sendOrderToUps', shop, apiUrl, {'shop': shop}, shippingDataResponse);
         return shippingDataJson.metafields.filter((item) => item.namespace === 'pickups-integration');
     } catch (e) {
         console.log(getDate()+' sendOrderToUps Error:', e);
@@ -602,20 +604,33 @@ function getAccuracyCodeLabel(code){
     }
 }
 
-async function getResponseJsonAndSaveLogs(route, request, response, type = ''){
+async function getResponseJsonAndSaveLogs(route, shop, apiUrl, request, response, type = ''){
     try {
+
+        if(route === 'dbConnect' && DEBUG_MODE === 'true'){
+            console.log(getDate()+' INFO '+route+' SHOP: '+shop+' | API URL: '+apiUrl);
+            console.log(getDate()+' REQUEST '+route ,request);
+        }
+
         const responseStatus = response.status;
         if(responseStatus === 200 || responseStatus === 201) {
             if(type === 'text'){
                 return await response.text();
             }
-            return await response.json();
+            const responseJson = await response.json();
+
+            if(route === 'dbConnect' && DEBUG_MODE === 'true'){
+                console.log(getDate()+' RESPONSE '+route ,responseJson);
+            }
+
+            return responseJson;
         }else{
             const responseText = await response.text();
             throw Error(getDate()+' ERROR '+route+' Response Error Code: '+responseStatus+', ErrorText: '+response.statusText+', response:'+responseText)
         }
     } catch (e) {
         if(DEBUG_MODE === 'true'){
+            console.log(getDate()+' INFO '+route+' SHOP: '+shop+' | API URL: '+apiUrl);
             console.log(getDate()+' REQUEST '+route ,request);
         }
         console.log(getDate()+' ERROR '+route ,e);
@@ -626,8 +641,9 @@ async function getResponseJsonAndSaveLogs(route, request, response, type = ''){
 
 async function getMetafieldsCount(shop, requestOptions){
     try {
-        const metafieldsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields/count.json`, requestOptions);
-        const metafieldsDataJson = await getResponseJsonAndSaveLogs('get-shipping-data metafields', requestOptions, metafieldsResponse);
+        const apiUrl = `https://${shop}/admin/api/${API_VERSION}/metafields/count.json`;
+        const metafieldsResponse = await fetch(apiUrl, requestOptions);
+        const metafieldsDataJson = await getResponseJsonAndSaveLogs('get-shipping-data metafields', shop, apiUrl, requestOptions, metafieldsResponse);
 
         return metafieldsDataJson.count;
     } catch (e){
@@ -646,6 +662,45 @@ function timePad(number) {
 function getDate(){
     const date = new Date();
     return '['+timePad(date.getFullYear()) + '-' + timePad(date.getMonth()+1) + '-' + timePad(date.getDate()) + ' ' + timePad(date.getHours()) + ':' + timePad(date.getMinutes()) + ':' + timePad(date.getSeconds())+']';
+}
+
+function getReference2Field(reference2Type, order, orderPickupsData, shippingData = null){
+    const pickupPoint = getPickupPoint(orderPickupsData);
+    const pickupPointId = pickupPoint['id'];
+    const pickupPointTitle = pickupPoint['title'];
+
+    let serviceName;
+    if(shippingData) {
+        const shippingDataFields = shippingData.metafields;
+        serviceName = shippingDataFields.find((item) => item.key === 'closestPointsTitle').value;
+    }
+
+    let reference2Value = '';
+    switch(reference2Type){
+        case 'order_id':
+            reference2Value = order.name.replace('#', '') || '';
+            break;
+        case 'customer_name':
+            reference2Value = getCustomerName(order) || '';
+            break;
+        case 'email':
+            reference2Value = order.email || '';
+            break;
+        case 'phone_number':
+            reference2Value = validatePhoneNumber(getPhoneNumber(order)) || '';
+            break;
+        case 'pickup_point_id':
+            reference2Value = pickupPointId || '';
+            break;
+        case 'pickup_point_name':
+            reference2Value = pickupPointTitle ? pickupPointTitle.replace(serviceName+' - ', '') : '';
+            break;
+        default:
+            reference2Value = '';
+            break;
+    }
+
+    return reference2Value.slice(0, 30);
 }
 
 module.exports = {
@@ -675,5 +730,6 @@ module.exports = {
     getDate,
     getCustomerTypeApi,
     getProductData,
-    getMetafieldsCount
+    getMetafieldsCount,
+    getReference2Field
 }

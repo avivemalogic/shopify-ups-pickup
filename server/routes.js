@@ -46,9 +46,10 @@ router.post('/api/save-shipping-data', bodyParser(), async (ctx, next) => {
                     }
             })
         };
-        const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields/${item.id}.json`, shippingDataRequestOptions);
+        const apiUrl = `https://${shop}/admin/api/${API_VERSION}/metafields/${item.id}.json`;
+        const response = await fetch(apiUrl, shippingDataRequestOptions);
 
-        const json = await getResponseJsonAndSaveLogs('save-shipping-data', shippingDataRequestOptions ,response);
+        const json = await getResponseJsonAndSaveLogs('save-shipping-data', shop, apiUrl, shippingDataRequestOptions ,response);
         if(json !== false) {
             responseData = responseData.concat(json);
         }
@@ -82,14 +83,17 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
         headers: getShopifyRequestHeaders(accessToken)
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?metafield[owner_resource]=shop`, requestOptions);
-    const dataJson = await getResponseJsonAndSaveLogs('get-shipping-data', requestOptions ,response);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/metafields.json?namespace=pickups-options&metafield[owner_resource]=shop`;
+    const response = await fetch(apiUrl, requestOptions);
+    const dataJson = await getResponseJsonAndSaveLogs('get-shipping-data', shop, apiUrl, requestOptions ,response);
 
-    const responseIntegration = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?namespace=pickups-integration&metafield[owner_resource]=shop`, requestOptions);
-    const dataJsonIntegration = await getResponseJsonAndSaveLogs('get-shipping-data', requestOptions ,responseIntegration);
+    const apiIntegrationUrl = `https://${shop}/admin/api/${API_VERSION}/metafields.json?namespace=pickups-integration&metafield[owner_resource]=shop`;
+    const responseIntegration = await fetch(apiIntegrationUrl, requestOptions);
+    const dataJsonIntegration = await getResponseJsonAndSaveLogs('get-shipping-data', shop, apiIntegrationUrl, requestOptions ,responseIntegration);
 
-    const responseClosest = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json?namespace=pickups-closest&metafield[owner_resource]=shop`, requestOptions);
-    const dataJsonClosest = await getResponseJsonAndSaveLogs('get-shipping-data', requestOptions ,responseClosest);
+    const apiClosestUrl = `https://${shop}/admin/api/${API_VERSION}/metafields.json?namespace=pickups-closest&metafield[owner_resource]=shop`;
+    const responseClosest = await fetch(apiClosestUrl, requestOptions);
+    const dataJsonClosest = await getResponseJsonAndSaveLogs('get-shipping-data', shop, apiClosestUrl, requestOptions ,responseClosest);
 
     if(dataJson.metafields !== undefined) {
         let metafieldsArray = dataJson.metafields;
@@ -102,6 +106,8 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
         if (!isPrivate) {
             metafieldsArray = metafieldsArray.filter((item) => item.key === 'upsPickupsMapType' || item.key === 'upsPickupsType' || item.key === 'upsPickupsOpenMapOnLoad' || item.key === 'upsPickupsChangePickupPoint')
         }
+
+        dataJson.metafields = metafieldsArray;
 
         if(checkAuthInformation){
             const integrationData = metafieldsArray.filter((item) => item.namespace === 'pickups-integration');
@@ -140,9 +146,10 @@ router.post('/api/get-product-data', bodyParser(), async (ctx, next) => {
         headers: getShopifyRequestHeaders(accessToken)
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/products/${productId}.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/products/${productId}.json`;
+    const response = await fetch(apiUrl, requestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('get-product-data', requestOptions, response);
+    ctx.body = await getResponseJsonAndSaveLogs('get-product-data', shop, apiUrl, requestOptions, response);
     ctx.statusCode = 200;
 });
 
@@ -158,9 +165,10 @@ router.post('/api/get-order-pickup-point', bodyParser(), async (ctx, next) => {
         headers: getShopifyRequestHeaders(accessToken)
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`;
+    const response = await fetch(apiUrl, requestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('get-order-pickup-point', requestOptions, response);
+    ctx.body = await getResponseJsonAndSaveLogs('get-order-pickup-point', shop, apiUrl, requestOptions, response);
     ctx.statusCode = 200;
 });
 
@@ -187,9 +195,10 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`;
+    const response = await fetch(apiUrl, requestOptions);
 
-    await getResponseJsonAndSaveLogs('save-order-pickup-point', requestOptions, response);
+    await getResponseJsonAndSaveLogs('save-order-pickup-point', shop, apiUrl, requestOptions, response);
 
     if(autoSend) {
         await autoSendToUps(shop, orderId);
@@ -219,9 +228,10 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const notesResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, notesRequestOptions);
+    const apiOrdersUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
+    const notesResponse = await fetch(apiOrdersUrl, notesRequestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-pickup-point', notesRequestOptions, notesResponse);
+    ctx.body = await getResponseJsonAndSaveLogs('save-order-pickup-point', shop, apiOrdersUrl, notesRequestOptions, notesResponse);
     ctx.statusCode = 200;
 });
 
@@ -250,9 +260,10 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
         })
     };
 
-    const metafieldsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`;
+    const metafieldsResponse = await fetch(apiUrl, requestOptions);
 
-    await getResponseJsonAndSaveLogs('save-order-waybill-number', requestOptions, metafieldsResponse);
+    await getResponseJsonAndSaveLogs('save-order-waybill-number', shop, apiUrl, requestOptions, metafieldsResponse);
 
     const tagsRequestOptions = {
         method: 'PUT',
@@ -266,9 +277,10 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
         })
     };
 
-    const tagsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, tagsRequestOptions);
+    const apiOrdersUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
+    const tagsResponse = await fetch(apiOrdersUrl, tagsRequestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-waybill-number', tagsRequestOptions, tagsResponse);
+    ctx.body = await getResponseJsonAndSaveLogs('save-order-waybill-number', shop, apiOrdersUrl, tagsRequestOptions, tagsResponse);
     ctx.statusCode = 200;
 })
 
@@ -295,9 +307,10 @@ router.post('/api/save-order-leadid', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`;
+    const response = await fetch(apiUrl, requestOptions);
 
-    await getResponseJsonAndSaveLogs('save-order-leadid', requestOptions, response);
+    await getResponseJsonAndSaveLogs('save-order-leadid', shop, apiUrl, requestOptions, response);
 
     const tagsRequestOptions = {
         method: 'PUT',
@@ -311,9 +324,10 @@ router.post('/api/save-order-leadid', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const tagsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, tagsRequestOptions);
+    const apiOrdersUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
+    const tagsResponse = await fetch(apiOrdersUrl, tagsRequestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-leadid', tagsRequestOptions, tagsResponse);
+    ctx.body = await getResponseJsonAndSaveLogs('save-order-leadid', shop, apiOrdersUrl, tagsRequestOptions, tagsResponse);
     ctx.statusCode = 200;
 })
 
@@ -339,9 +353,10 @@ router.post('/api/save-order-weight', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`;
+    const response = await fetch(apiUrl, requestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-weight', requestOptions, response);
+    ctx.body = await getResponseJsonAndSaveLogs('save-order-weight', shop, apiUrl, requestOptions, response);
     ctx.statusCode = 200;
 })
 
@@ -383,9 +398,10 @@ router.post('/api/fullfill-order-items', bodyParser(), async (ctx, next) => {
             })
         };
 
-        const fulfillmentsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/fulfillments.json`, requestOptions);
+        const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/fulfillments.json`;
+        const fulfillmentsResponse = await fetch(apiUrl, requestOptions);
 
-        output = await getResponseJsonAndSaveLogs('fullfill-order-items', requestOptions, fulfillmentsResponse);
+        output = await getResponseJsonAndSaveLogs('fullfill-order-items', shop, apiUrl, requestOptions, fulfillmentsResponse);
 
     } catch (e){
         console.log('Fulfillment Error: '+e);
@@ -422,9 +438,10 @@ router.post('/api/save-order-tags-error', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const tagsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, tagsRequestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
+    const tagsResponse = await fetch(apiUrl, tagsRequestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-tags-error', tagsRequestOptions, tagsResponse);
+    ctx.body = await getResponseJsonAndSaveLogs('save-order-tags-error', shop, apiUrl, tagsRequestOptions, tagsResponse);
     ctx.statusCode = 200;
 });
 
@@ -450,11 +467,12 @@ router.post('/api/save-order-phone-number', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const saveOrderResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
+    const saveOrderResponse = await fetch(apiUrl, requestOptions);
 
     await autoSendToUps(shop, orderId);
 
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-phone-number', requestOptions, saveOrderResponse);
+    ctx.body = await getResponseJsonAndSaveLogs('save-order-phone-number', shop, apiUrl, requestOptions, saveOrderResponse);
     ctx.statusCode = 200;
 });
 
@@ -477,9 +495,10 @@ router.post('/api/save-order-note', bodyParser(), async (ctx, next) => {
         })
     };
 
-    const saveOrderResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
+    const saveOrderResponse = await fetch(apiUrl, requestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-note', requestOptions, saveOrderResponse);
+    ctx.body = await getResponseJsonAndSaveLogs('save-order-note', shop, apiUrl, requestOptions, saveOrderResponse);
     ctx.statusCode = 200;
 });
 
@@ -495,8 +514,9 @@ router.post('/api/get-waybill-number', bodyParser(), async (ctx, next) => {
         headers: getShopifyRequestHeaders(accessToken)
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`, requestOptions);
-    ctx.body = await getResponseJsonAndSaveLogs('get-waybill-number', requestOptions, response);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`;
+    const response = await fetch(apiUrl, requestOptions);
+    ctx.body = await getResponseJsonAndSaveLogs('get-waybill-number', shop, apiUrl, requestOptions, response);
     ctx.statusCode = 200;
 });
 
@@ -512,9 +532,10 @@ router.post('/api/get-order', bodyParser(), async (ctx, next) => {
         headers: getShopifyRequestHeaders(accessToken)
     };
 
-    const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`, requestOptions);
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
+    const response = await fetch(apiUrl, requestOptions);
 
-    ctx.body = await getResponseJsonAndSaveLogs('get-order', requestOptions, response);
+    ctx.body = await getResponseJsonAndSaveLogs('get-order', shop, apiUrl, requestOptions, response);
     ctx.statusCode = 200;
 });
 

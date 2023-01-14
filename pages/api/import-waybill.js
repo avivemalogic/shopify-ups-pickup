@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { updatedMetafields, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
+const { getReference2Field, updatedMetafields, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -129,29 +129,6 @@ function getPickupPoint(data){
     return {
         'id': id,
         'title': title
-    }
-}
-
-function getReference2Field(reference2Type, order, orderPickupsData){
-    const pickupPoint = getPickupPoint(orderPickupsData);
-    const pickupPointId = pickupPoint['id'];
-    const pickupPointTitle = pickupPoint['title'];
-
-    switch(reference2Type){
-        case 'order_id':
-            return order.name.replace('#', '');
-        case 'customer_name':
-            return getCustomerName(order);
-        case 'email':
-            return order.email;
-        case 'phone_number':
-            return validatePhoneNumber(getPhoneNumber(order));
-        case 'pickup_point_id':
-            return pickupPointId;
-        case 'pickup_point_name':
-            return pickupPointTitle;
-        default:
-            return '';
     }
 }
 

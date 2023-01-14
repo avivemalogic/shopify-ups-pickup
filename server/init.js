@@ -2,7 +2,7 @@ require("dotenv").config();
 const { HOST, API_VERSION } = process.env;
 const { getShopifyRequestHeaders, getResponseJsonAndSaveLogs, getDate } = require('./helper');
 const shippingDataFieldsObject = require('../data/shipping_data_fields.json')
-const PLUGIN_FIELDS_VERSION = "1.1.4";
+const PLUGIN_FIELDS_VERSION = "1.2.0";
 
 /**
  * Add Shipping Method Options
@@ -62,9 +62,10 @@ async function createPickUpsOptions(shop, accessToken, install = false){
                 })
             };
             try {
-                const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/metafields.json`, shippingDataRequestOptions);
+                const apiUrl = `https://${shop}/admin/api/${API_VERSION}/metafields.json`;
+                const response = await fetch(apiUrl, shippingDataRequestOptions);
 
-                await getResponseJsonAndSaveLogs('createPickUpsOptions', shippingDataRequestOptions, response);
+                await getResponseJsonAndSaveLogs('createPickUpsOptions', shop, apiUrl, shippingDataRequestOptions, response);
 
             } catch (e){
                 throw new Error(e);
@@ -111,9 +112,10 @@ async function addPickupPointScripts(shop, accessToken){
     };
 
     try {
-        const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/script_tags.json`, pickupPointScriptRequestOptions);
+        const apiUrl = `https://${shop}/admin/api/${API_VERSION}/script_tags.json`;
+        const response = await fetch(apiUrl, pickupPointScriptRequestOptions);
 
-        await getResponseJsonAndSaveLogs('addPickupPointScripts', pickupPointScriptRequestOptions, response);
+        await getResponseJsonAndSaveLogs('addPickupPointScripts', shop, apiUrl, pickupPointScriptRequestOptions, response);
     } catch (e){
         throw new Error(e);
     }
@@ -138,9 +140,10 @@ async function addCarriersService(shop, accessToken){
     };
 
     try {
-        const addCarriersServiceResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/carrier_services.json`, carrierServicesRequestOptions);
+        const apiUrl = `https://${shop}/admin/api/${API_VERSION}/carrier_services.json`;
+        const addCarriersServiceResponse = await fetch(apiUrl, carrierServicesRequestOptions);
 
-        await getResponseJsonAndSaveLogs('addCarriersService', carrierServicesRequestOptions, addCarriersServiceResponse);
+        await getResponseJsonAndSaveLogs('addCarriersService', shop, apiUrl, carrierServicesRequestOptions, addCarriersServiceResponse);
     } catch (e){
         throw new Error(e);
     }
@@ -160,9 +163,10 @@ async function createWebhook(topic, address, shop, accessToken){
     };
 
     try {
-        const response = await fetch(`https://${shop}/admin/api/${API_VERSION}/webhooks.json`, webhookRequestOptions);
+        const apiUrl = `https://${shop}/admin/api/${API_VERSION}/webhooks.json`;
+        const response = await fetch(apiUrl, webhookRequestOptions);
 
-        await getResponseJsonAndSaveLogs('createWebhook', webhookRequestOptions, response);
+        await getResponseJsonAndSaveLogs('createWebhook', shop, apiUrl, webhookRequestOptions, response);
     } catch (e){
         throw new Error(e);
     }

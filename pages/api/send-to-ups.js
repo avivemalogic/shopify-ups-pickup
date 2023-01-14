@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
+const { getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -144,35 +144,6 @@ function getPickupPoint(data){
     }
 }
 
-function getReference2Field(reference2Type, order, orderPickupsData, shippingData = null){
-    const pickupPoint = getPickupPoint(orderPickupsData);
-    const pickupPointId = pickupPoint['id'];
-    const pickupPointTitle = pickupPoint['title'];
-
-    let serviceName;
-    if(shippingData) {
-        const shippingDataFields = shippingData.metafields;
-        serviceName = shippingDataFields.find((item) => item.key === 'closestPointsTitle').value;
-    }
-
-    switch(reference2Type){
-        case 'order_id':
-            return order.name.replace('#', '') || '';
-        case 'customer_name':
-            return getCustomerName(order) || '';
-        case 'email':
-            return order.email || '';
-        case 'phone_number':
-            return validatePhoneNumber(getPhoneNumber(order)) || '';
-        case 'pickup_point_id':
-            return pickupPointId || '';
-        case 'pickup_point_name':
-            return pickupPointTitle ? pickupPointTitle.replace(serviceName+' - ', '') : '';
-        default:
-            return '';
-    }
-}
-
 function getOrderWeight(integrationData, orderItems){
     const defaultWeight = 1;
 
@@ -313,7 +284,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     try {
         const response = await fetch(apiUrl, requestOptions);
 
-        const data = await getResponseJsonAndSaveLogs('restApiSendToUps', requestOptions, response);
+        const data = await getResponseJsonAndSaveLogs('restApiSendToUps', shop, apiUrl, requestOptions, response);
 
         if(!data){
             throw 'Api Return Empty Response';
