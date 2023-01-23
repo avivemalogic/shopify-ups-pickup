@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { HOST, SHOPIFY_API_SECRET_KEY, API_VERSION, DEBUG_MODE } = process.env;
+const { HOST, SHOPIFY_API_SECRET_KEY, API_VERSION, DEBUG_MODE, SEQ_URL } = process.env;
 const crypto = require('crypto');
 const querystring = require('querystring');
 const DB_URL = 'http://api-shopify.emalogic.com';
@@ -631,9 +631,12 @@ async function getResponseJsonAndSaveLogs(route, shop, apiUrl, request, response
     } catch (e) {
         if(DEBUG_MODE === 'true'){
             console.log(getDate()+' INFO '+route+' SHOP: '+shop+' | API URL: '+apiUrl);
+            await writeLogToSeq(getDate(), ' INFO '+route+' SHOP: '+shop+' | API URL: '+apiUrl);
             console.log(getDate()+' REQUEST '+route ,request);
+            await writeLogToSeq(getDate(), ' REQUEST '+route ,request);
         }
         console.log(getDate()+' ERROR '+route ,e);
+        await writeLogToSeq(getDate(), ' ERROR '+route ,e);
 
         throw Error(e);
     }
@@ -650,6 +653,33 @@ async function getMetafieldsCount(shop, requestOptions){
         console.log(getDate()+' ERROR getMetafieldsCount ',e);
         return 0;
     }
+}
+
+async function writeLogToSeq(message){
+    try {
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+
+        const datetime = new Date().toISOString();
+        const rawBody = JSON.stringify({"@t":datetime,"@mt":message});
+
+        const requestOptions = {
+            method: 'POST',
+            headers: myHeaders,
+            body: rawBody,
+            redirect: 'follow'
+        };
+
+        const response = await fetch(SEQ_URL, requestOptions);
+        await response.json();
+
+        return true;
+
+    } catch (e){
+        console.log(getDate()+' ERROR writeLogToSeq ',e);
+    }
+
+    return false;
 }
 
 function timePad(number) {
