@@ -25,7 +25,7 @@ class Index extends Component {
         super(props);
         this.state = {
             'savedText': '',
-            'isLoading': false,
+            'isLoading': true,
             'shop': '',
             'requiredFields': [{ 'value': 'closestPointsPrice', 'deps': 'closestPointsEnabled' }],
             'isChanged': [],
@@ -116,6 +116,7 @@ class Index extends Component {
 
         this.checkAuthInformation(shop).then(() => {
             console.log('checkAuthInformation done');
+            this.setState({'isLoading': false})
         });
     }
 

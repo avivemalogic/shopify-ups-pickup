@@ -6,7 +6,6 @@ const DB_URL = 'http://api-shopify.emalogic.com';
 const fs = require('fs');
 const { PDFDocument } = require('pdf-lib');
 
-
 function getShopifyRequestHeaders(accessToken){
     return {
         'Accept': 'application/json',
@@ -40,11 +39,16 @@ async function getShippingData(shop){
         },
         body: JSON.stringify({'shop': shop, 'isPrivate': true})
     });
+
     try {
+        if(shippingDataResponse.status !== 200){
+            throw new Error(`${shippingDataResponse.status} - ${shippingDataResponse.statusText}`);
+        }
+
         return await shippingDataResponse.json();
     } catch (e) {
         console.log(getDate()+' getShippingData Error:', e);
-        return {'error': true, 'message': 'getShippingData Error:'+e };
+        return {'error': true, 'message': 'getShippingData Error:'+e, 'statusMessage': e.message };
     }
 }
 
@@ -69,10 +73,13 @@ async function getProductData(shop, productId){
 async function getIntegrationData(shop){
     try {
         const shippingDataJson = await getShippingData(shop);
+        if(shippingDataJson['error']){
+            throw new Error(shippingDataJson['statusMessage'])
+        }
         return shippingDataJson.metafields.filter((item) => item.namespace === 'pickups-integration');
     } catch (e) {
         console.log(getDate()+' getIntegrationData Error:', e);
-        return {'error': true, 'message': 'getIntegrationData Error:'+e };
+        return {'error': true, 'message': 'getIntegrationData Error:'+e.message };
     }
 }
 
@@ -380,7 +387,9 @@ async function getAccessToken(shop){
         'Content-type': 'application/x-www-form-urlencoded'
     };
     const body = 'shop=' + encodeURIComponent(shop);
-    return await dbConnect('get', headers, body);
+    const accessToken = await dbConnect('get', headers, body);
+    console.log('getAccessToken', accessToken);
+    return accessToken;
 }
 
 async function insertAccessToken(shop, accessToken){
@@ -694,6 +703,22 @@ function getDate(){
     return '['+timePad(date.getFullYear()) + '-' + timePad(date.getMonth()+1) + '-' + timePad(date.getDate()) + ' ' + timePad(date.getHours()) + ':' + timePad(date.getMinutes()) + ':' + timePad(date.getSeconds())+']';
 }
 
+function getPickupPoint(data){
+    const pickupPoint = data.orderPickupPoint;
+    let id = null;
+    let title = null;
+
+    if(pickupPoint !== null){
+        id = pickupPoint.iid;
+        title = pickupPoint.title;
+    }
+
+    return {
+        'id': id,
+        'title': title
+    }
+}
+
 function getReference2Field(reference2Type, order, orderPickupsData, shippingData = null){
     const pickupPoint = getPickupPoint(orderPickupsData);
     const pickupPointId = pickupPoint['id'];
@@ -761,5 +786,6 @@ module.exports = {
     getCustomerTypeApi,
     getProductData,
     getMetafieldsCount,
-    getReference2Field
+    getReference2Field,
+    getPickupPoint
 }

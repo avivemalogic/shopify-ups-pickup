@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
+const { getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -126,22 +126,6 @@ function getCustomerName(order){
 
 function getPhoneNumber(order){
     return order.shipping_address.phone;
-}
-
-function getPickupPoint(data){
-    const pickupPoint = data.orderPickupPoint;
-    let id = null;
-    let title = null;
-
-    if(pickupPoint !== null){
-        id = pickupPoint.iid;
-        title = pickupPoint.title;
-    }
-
-    return {
-        'id': id,
-        'title': title
-    }
 }
 
 function getOrderWeight(integrationData, orderItems){
@@ -391,6 +375,7 @@ export default async (req, res) => {
                 output += `${errorsPrefix} ${error}`;
                 continue;
             }
+
             const upsData = await restApiSendToUps(shop, accessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags);
 
             if (upsData.errors) {

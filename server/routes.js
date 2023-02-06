@@ -371,34 +371,36 @@ router.post('/api/fullfill-order-items', bodyParser(), async (ctx, next) => {
     const accessToken = await getAccessToken(shop);
 
     try {
+
         const locationRequestOptions = {
             method: 'GET',
             headers: getShopifyRequestHeaders(accessToken)
         };
-        const locationsResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/locations.json`, locationRequestOptions);
-        const locationsJson = await locationsResponse.json();
-        if(locationsJson.locations.length > 1){
-            throw 'because you are managing more than one warehouse, the fulfillment operation must be completed manually!';
-        }
-        const locationId = locationsJson.locations[0]['id'];
+        const fulfillmentOrderResponse = await fetch(`https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/fulfillment_orders.json`, locationRequestOptions);
+        const fulfillmentOrderJson = await fulfillmentOrderResponse.json();
+        const fulfillmentOrderId = fulfillmentOrderJson.fulfillment_orders[0]['id'];
 
         const requestOptions = {
             method: 'POST',
             headers: getShopifyRequestHeaders(accessToken),
             body: JSON.stringify({
                 "fulfillment": {
-                    "location_id": locationId,
+                    "line_items_by_fulfillment_order": [
+                        {
+                            "fulfillment_order_id": fulfillmentOrderId
+                        }
+                    ],
                     "notify_customer": customerNotify,
-                    "tracking_number": wayBillNumber,
-                    "tracking_company": "ups-ship",
-                    "tracking_urls": [
-                        "https://site.ship.co.il/?trackNumber="+wayBillNumber
-                    ]
+                    "tracking_info": {
+                        "company": "ups-ship",
+                        "number": wayBillNumber,
+                        "url": "https://site.ship.co.il/?trackNumber="+wayBillNumber
+                    }
                 }
             })
         };
 
-        const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/fulfillments.json`;
+        const apiUrl = `https://${shop}/admin/api/${API_VERSION}/fulfillments.json`;
         const fulfillmentsResponse = await fetch(apiUrl, requestOptions);
 
         output = await getResponseJsonAndSaveLogs('fullfill-order-items', shop, apiUrl, requestOptions, fulfillmentsResponse);
