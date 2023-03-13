@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
+const { getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -120,14 +120,6 @@ function splitPhonePrefix(phoneNumber){
     }
 }
 
-function getCustomerName(order){
-    return `${order.shipping_address.first_name} ${order.shipping_address.last_name}`;
-}
-
-function getPhoneNumber(order){
-    return order.shipping_address.phone;
-}
-
 function getOrderWeight(integrationData, orderItems){
     const defaultWeight = 1;
 
@@ -157,7 +149,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
 
     const apiUrl = apiHost + 'api/v1/shipment/insert-domestic-wb-by-customer';
     const customerEmail = getOrderJson.order.email;
-    const customerName = getCustomerName(getOrderJson.order);
+    const customerName = getOrderCustomerName(getOrderJson.order);
     const cityName = getOrderJson.order.shipping_address.city;
     const customerZipcode = getOrderJson.order.shipping_address.zip || '';
     let streetAddress = getOrderJson.order.shipping_address.address1;
@@ -169,7 +161,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     const streetName = streetAddress;
     const houseNumber = getHouseNumber(roomNumber);
 
-    const phoneNumber = getPhoneNumber(getOrderJson.order);
+    const phoneNumber = getOrderPhoneNumber(getOrderJson.order);
     const orderOriginalId = getOrderJson.order.id;
     const orderId = getOrderJson.order.name.substring(1);
     const shippingMethod = getOrderJson.order.shipping_lines[0].code;
@@ -437,6 +429,8 @@ export default async (req, res) => {
                     pdfList.push(upsPrintLabel.response);
                 }
             }
+
+            await sleep();
         }
 
         if (pdfList.length > 0) {

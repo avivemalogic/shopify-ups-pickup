@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { updatedMetafields, mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
+const { sleep, updatedMetafields, mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
 
 async function getWayBillNumber(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -105,6 +105,7 @@ export default async (req, res) => {
 
             pdfList.push(upsData.response);
 
+            await sleep();
         }
 
         if (pdfList.length > 0) {

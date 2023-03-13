@@ -108,14 +108,6 @@ function splitPhonePrefix(phoneNumber){
     }
 }
 
-function getCustomerName(order){
-    return `${order.shipping_address.first_name} ${order.shipping_address.last_name}`;
-}
-
-function getPhoneNumber(order){
-    return order.shipping_address.phone;
-}
-
 function getPickupPoint(data){
     const pickupPoint = data.orderPickupPoint;
     let id = null;

@@ -736,13 +736,13 @@ function getReference2Field(reference2Type, order, orderPickupsData, shippingDat
             reference2Value = order.name.replace('#', '') || '';
             break;
         case 'customer_name':
-            reference2Value = getCustomerName(order) || '';
+            reference2Value = getOrderCustomerName(order) || '';
             break;
         case 'email':
             reference2Value = order.email || '';
             break;
         case 'phone_number':
-            reference2Value = validatePhoneNumber(getPhoneNumber(order)) || '';
+            reference2Value = validatePhoneNumber(getOrderPhoneNumber(order)) || '';
             break;
         case 'pickup_point_id':
             reference2Value = pickupPointId || '';
@@ -756,6 +756,18 @@ function getReference2Field(reference2Type, order, orderPickupsData, shippingDat
     }
 
     return reference2Value.slice(0, 30);
+}
+
+async function sleep(time = 1000){
+    return await new Promise(resolve => setTimeout(resolve, time));
+}
+
+function getOrderCustomerName(order){
+    return `${order.shipping_address.first_name} ${order.shipping_address.last_name}`;
+}
+
+function getOrderPhoneNumber(order){
+    return order.shipping_address.phone;
 }
 
 module.exports = {
@@ -787,5 +799,8 @@ module.exports = {
     getProductData,
     getMetafieldsCount,
     getReference2Field,
-    getPickupPoint
+    getPickupPoint,
+    sleep,
+    getOrderPhoneNumber,
+    getOrderCustomerName
 }

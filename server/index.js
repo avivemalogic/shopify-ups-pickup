@@ -4,7 +4,7 @@ const Koa = require('koa');
 const serve = require('koa-static')
 const cors = require('koa-cors');
 const next = require('next');
-const { createShopifyAuth } = require("koa-shopify-auth-cookieless");
+const { createShopifyAuth, getQueryKey } = require("koa-shopify-auth-cookieless");
 const session = require('koa-session');
 const { insertAccessToken } = require('./helper');
 const { createPickUpsOptions, addPickupPointScripts, addCarriersService, createWebhook } = require('./init');
@@ -25,6 +25,14 @@ app.prepare().then(() => {
     server.keys = [SHOPIFY_API_SECRET_KEY];
 
     server.use(async (ctx, next) => {
+        const forceLegacyDomain = getQueryKey(ctx, "force_legacy_domain");
+        if(forceLegacyDomain){
+            ctx.statusCode = 200
+            ctx.set('Content-Type', 'text/html');
+            ctx.body = '<script defer>parent.window.close();</script><div style="margin: auto; text-align:center;"><button style="background: #fff; min-height: 3.6rem; min-width: 3.6rem; border: 1px solid rgba(186, 191, 195, 1); border-radius: 5px; box-shadow: 0 1px 0 rgb(0 0 0 / 5%); line-height: 1; font-size: 14px; font-weight: 600; margin: 0; padding: 0.7rem 1.6rem; margin-top: 100px;" onclick="parent.window.close()">Back to Previous Page</button></div>';
+            return;
+        }
+
         if ((ctx.get('X-Forwarded-Proto') !== 'https')) {
             return ctx.redirect('https://' + ctx.get('Host') + ctx.url);
         }
@@ -38,7 +46,7 @@ app.prepare().then(() => {
         createShopifyAuth({
             apiKey: SHOPIFY_API_KEY,
             secret: SHOPIFY_API_SECRET_KEY,
-            scopes: ['write_orders','write_script_tags', 'write_shipping', 'read_products', 'write_fulfillments', 'write_assigned_fulfillment_orders'],
+            scopes: ['write_orders','write_script_tags', 'write_shipping', 'read_products', 'write_fulfillments', 'write_assigned_fulfillment_orders', 'write_merchant_managed_fulfillment_orders'],
             accessMode: 'offline',
             async afterAuth(ctx) {
                 const { shop, accessToken } = ctx.state.shopify;
