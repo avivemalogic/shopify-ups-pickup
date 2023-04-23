@@ -671,7 +671,7 @@ async function writeLogToSeq(message){
 
         const datetime = new Date().toISOString();
         const rawBody = JSON.stringify({"@t":datetime,"@mt":message});
-
+        
         const requestOptions = {
             method: 'POST',
             headers: myHeaders,
@@ -758,6 +758,16 @@ function getReference2Field(reference2Type, order, orderPickupsData, shippingDat
     return reference2Value.slice(0, 30);
 }
 
+function validatePhoneNumber(phoneNumber){
+    try {
+        const validNumber = phoneNumber.replace(' ', '').replace('+972', '0').replace(/-/g, '').match(/^0(5[^7])[0-9]{7}$/);
+        if(validNumber === null) return false;
+        return validNumber[0];
+    } catch (e){
+        return phoneNumber;
+    }
+}
+
 async function sleep(time = 1000){
     return await new Promise(resolve => setTimeout(resolve, time));
 }
@@ -802,5 +812,6 @@ module.exports = {
     getPickupPoint,
     sleep,
     getOrderPhoneNumber,
-    getOrderCustomerName
+    getOrderCustomerName,
+    validatePhoneNumber
 }

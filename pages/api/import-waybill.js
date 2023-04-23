@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { getReference2Field, updatedMetafields, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
+const { validatePhoneNumber, getReference2Field, updatedMetafields, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -85,16 +85,6 @@ function getHouseNumber(streetAddress){
 function isValidPhoneNumber(phoneNumber){
     if(!phoneNumber) return false;
     return !!validatePhoneNumber(phoneNumber);
-}
-
-function validatePhoneNumber(phoneNumber){
-    try {
-        const validNumber = phoneNumber.replace(' ', '').replace('+972', '0').replace(/-/g, '').match(/^0(5[^7])[0-9]{7}$/);
-        if(validNumber === null) return false;
-        return validNumber[0];
-    } catch (e){
-        return phoneNumber;
-    }
 }
 
 function splitPhonePrefix(phoneNumber){
