@@ -86,14 +86,19 @@ class Output extends Component {
     }
 
     buttonClick = () => {
-        const app = createApp({
-            apiKey: this.state.apiKey,
-            shopOrigin: this.state.shop,
-        });
-        const redirect = Redirect.create(app);
-        redirect.dispatch(Redirect.Action.ADMIN_PATH, {
-            path: '/orders'
-        });
+        try {
+            history.back();
+        }catch (e) {
+            const app = createApp({
+                apiKey: this.state.apiKey,
+                shopOrigin: this.state.shop,
+            });
+
+            const redirect = Redirect.create(app);
+            redirect.dispatch(Redirect.Action.ADMIN_PATH, {
+                path: '/orders'
+            });
+        }
     }
 
     findGetParameter = () => {
