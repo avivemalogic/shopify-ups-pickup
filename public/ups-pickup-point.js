@@ -88,7 +88,7 @@ function hidePickUpsButton(text){
 (async function () {
     const HOST = 'https://shopify.emalogic.com/';
     const orderId = Shopify.checkout.order_id;
-    const shop = Shopify.Checkout.apiHost;
+    const shop = Shopify.shop;
 
     const isContainPickupPoint = await orderContainPickupPoint(HOST, shop, orderId);
 
