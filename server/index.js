@@ -2,6 +2,8 @@ require('isomorphic-fetch');
 const dotenv = require('dotenv');
 const Koa = require('koa');
 const serve = require('koa-static')
+const path = require('path');
+const send = require('koa-send');
 const cors = require('koa-cors');
 const next = require('next');
 const { createShopifyAuth, getQueryKey } = require("koa-shopify-auth-cookieless");
@@ -16,8 +18,8 @@ const port = parseInt(process.env.PORT, 10) || 3000;
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
-
-const { HOST, SHOPIFY_API_SECRET_KEY, SHOPIFY_API_KEY, API_VERSION } = process.env;
+const sharedFilesDir = '/mnt/shared/';
+const { ENV, HOST, SHOPIFY_API_SECRET_KEY, SHOPIFY_API_KEY, API_VERSION } = process.env;
 
 app.prepare().then(() => {
     const server = new Koa();
@@ -40,6 +42,16 @@ app.prepare().then(() => {
     });
 
     server.use(serve('./public'));
+
+    router.all(/^\/ups-labels\/(.*)$/, async (ctx, next) => {
+        if (ENV === 'production' || ENV === 'staging') {
+            const filePath = path.join(sharedFilesDir, ctx.params[0]);
+            await send(ctx, filePath, { root: '/' });
+        } else {
+            return next(); // Skip to the next middleware/route handler
+        }
+    });
+
     server.use(cors());
 
     server.use(

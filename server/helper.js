@@ -302,6 +302,48 @@ async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, fo
     }
 }
 
+async function getOrderAdditionalInfo(shop, orderId){
+    const getOrderMetafieldsResponse = await fetch(`${HOST}api/get-waybill-number`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 'shop': shop, 'orderId': orderId })
+    });
+
+    const getOrderMetafieldsJson = await getOrderMetafieldsResponse.json();
+
+    let orderIsDDO = '';
+    let orderCODDetails = '';
+    let orderCODValue = '';
+    let orderIsUDR = '';
+    let orderIsReturn = '';
+    let orderNumOfPackages = '';
+    getOrderMetafieldsJson.metafields.forEach((item) => {
+        if(item.key === 'pickups_is_ddo'){
+            orderIsDDO = item.value;
+        }
+        if(item.key === 'pickups_cod_details'){
+            orderCODDetails = item.value
+        }
+        if(item.key === 'pickups_cod_value'){
+            orderCODValue = item.value
+        }
+        if(item.key === 'pickups_is_udr'){
+            orderIsUDR = item.value
+        }
+        if(item.key === 'pickups_is_return'){
+            orderIsReturn = item.value
+        }
+        if(item.key === 'pickups_num_of_packages'){
+            orderNumOfPackages = item.value
+        }
+    })
+
+    return { 'orderIsDDO': orderIsDDO, 'orderCODDetails': orderCODDetails, 'orderCODValue': orderCODValue, 'orderIsUDR': orderIsUDR, 'orderIsReturn': orderIsReturn, 'orderNumOfPackages': orderNumOfPackages};
+}
+
 async function mergePdf(pdfList, format){
     let pdfFinal,
         pdfEncodingType;
@@ -327,7 +369,9 @@ async function mergePdf(pdfList, format){
     const pdfFile = Buffer.from(pdfFinal, pdfEncodingType);
 
     const pdfDir = 'ups-labels';
+    // TODO: add condition if is prod/stage or dev
     const serverPdfDir = `./public/${pdfDir}`;
+    //const serverPdfDir = '/mnt/ups-labels';
     const uniqueId = Date.now() * 123
     const pdfFilename = `ups_${format.toLowerCase()}_${uniqueId}.pdf`;
 
@@ -780,6 +824,14 @@ function getOrderPhoneNumber(order){
     return order.shipping_address.phone;
 }
 
+function getNumberOfPackages(additionalInformation){
+    const numOfPackages = Number(additionalInformation['orderNumOfPackages']);
+    if(numOfPackages > 99){
+        return 99;
+    }
+    return numOfPackages || 1;
+}
+
 module.exports = {
     getShopifyRequestHeaders,
     getIntegrationData,
@@ -813,5 +865,7 @@ module.exports = {
     sleep,
     getOrderPhoneNumber,
     getOrderCustomerName,
-    validatePhoneNumber
+    validatePhoneNumber,
+    getOrderAdditionalInfo,
+    getNumberOfPackages
 }

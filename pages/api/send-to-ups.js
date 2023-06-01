@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { validatePhoneNumber, getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
+const { getOrderAdditionalInfo, getNumberOfPackages, validatePhoneNumber, getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
 
 async function getOrderPickupsData(shop, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -162,6 +162,8 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     const reference2 = getReference2Field(reference2Type, getOrderJson.order, orderPickupsData, shippingData).substring(0, 36);
     const shipmentInstructions = streetAddress;
 
+    const orderAdditionalInfo = await getOrderAdditionalInfo(shop, orderOriginalId);
+
     if(!isValidPhoneNumber(phoneNumber)){
         return {
             'errors': 'Phone Number is invalid'
@@ -169,7 +171,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     }
 
     let functionArgs = {
-        'NumberOfPackages': 1,
+        'NumberOfPackages': getNumberOfPackages(orderAdditionalInfo),
         'ConsigneeAddress': {
             'ContactPerson': customerName,
             'CustomerName': customerName,
@@ -235,6 +237,28 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
             }
         }
         functionArgs['PickupPointID'] = pickupPointId;
+    }else{
+        Object.entries(orderAdditionalInfo).forEach(entry => {
+            const [key, value] = entry;
+            if(value === ''){
+                return;
+            }
+            if(key === 'orderIsDDO'){
+                functionArgs['IsDDO'] = !!value;
+            }
+            if(key === 'orderCODDetails'){
+                functionArgs['CODDetails'] = value;
+            }
+            if(key === 'orderCODValue'){
+                functionArgs['CODValue'] = value;
+            }
+            if(key === 'orderIsUDR'){
+                functionArgs['IsUDR'] = !!value;
+            }
+            if(key === 'orderIsReturn'){
+                functionArgs['IsReturn'] = !!value;
+            }
+        })
     }
 
     const requestOptions = {
