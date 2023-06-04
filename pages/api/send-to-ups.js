@@ -163,6 +163,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     const shipmentInstructions = streetAddress;
 
     const orderAdditionalInfo = await getOrderAdditionalInfo(shop, orderOriginalId);
+    const customerType = shippingData['customerType'] || null;
 
     if(!isValidPhoneNumber(phoneNumber)){
         return {
@@ -171,7 +172,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     }
 
     let functionArgs = {
-        'NumberOfPackages': getNumberOfPackages(orderAdditionalInfo),
+        'NumberOfPackages': getNumberOfPackages(orderAdditionalInfo, customerType),
         'ConsigneeAddress': {
             'ContactPerson': customerName,
             'CustomerName': customerName,
@@ -361,7 +362,7 @@ export default async (req, res) => {
                 continue;
             }
 
-            const shippingData = await getShippingData(shop);
+            const shippingData = await getShippingData(shop, true);
             if(shippingData['error']){
                 output += `${errorsPrefix} ${shippingData['message']}`;
                 continue;

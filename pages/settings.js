@@ -14,6 +14,7 @@ import {
     Frame,
     Loading,
     InlineError,
+    Checkbox,
     Icon,
     Spinner
 } from '@shopify/polaris';
@@ -90,6 +91,7 @@ class Index extends Component {
             'isLoading': true,
             'orderId': '',
             'shop': '',
+            'customerType': null,
             'isPickups': true,
             'orderSentToUps': false,
             'requiredFields': [],
@@ -152,6 +154,10 @@ class Index extends Component {
                 })
             })
         }
+
+        this.checkAuthInformation(shop).then(() => {
+            this.setState({'isLoading': false})
+        });
     }
 
     render() {
@@ -177,103 +183,81 @@ class Index extends Component {
                     {state.isPickups === false &&
                     <Layout.AnnotatedSection title="UPS Additional Options">
                         <div style={{margin: '2rem 0', direction: 'rtl', textAlign: 'right'}}>
-                            {state.orderSentToUps !== true ?
-                                <SettingToggle
-                                    action={{
-                                        content: state.pickups_is_ddo.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
-                                        onAction: this.toggleIsDDO,
-                                    }}
-                                    enabled={state.pickups_is_ddo.value}>
-                                    DDO: <TextStyle
-                                    variation="strong">{state.pickups_is_ddo.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>
-                                    <div>שירות מסירה בכתובת מוגדרת</div>
-                                </SettingToggle>
-                                :
-                                <Card sectioned>
-                                    DDO: {state.pickups_is_ddo.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}
-                                </Card>
-                            }
-                            {state.pickups_is_ddo.value === 'true' &&
-                                <div style={{margin: '2rem 0 0'}}>
-                                    <Card sectioned>
-                                        {state.orderSentToUps !== true ?
-                                            <TextField
-                                                value={state.pickups_cod_details.value === 'X' ? '' : state.pickups_cod_details.value}
-                                                onChange={this.handleChange('pickups_cod_details', 'text')}
-                                                label="הערות COD"
-                                                type="text"
-                                                maxLength={50}
-                                            />
-                                            : "הערות COD: "+state.pickups_cod_details.value }
-                                    </Card>
-                                    <Card sectioned>
-                                        {state.orderSentToUps !== true ?
-                                            <TextField
-                                                value={state.pickups_cod_value.value === '' ? '' : state.pickups_cod_value.value}
-                                                onChange={this.handleChange('pickups_cod_value', 'number', 50000)}
-                                                label="ערך COD"
-                                                type="number"
-                                                step="0.1"
-                                            />
-                                            : "ערך COD: "+state.pickups_cod_value.value }
+                            <Card sectioned>
+                                {state.orderSentToUps !== true ?
+                                    <TextField
+                                        value={state.pickups_cod_value.value === '' ? '' : state.pickups_cod_value.value}
+                                        onChange={this.handleChange('pickups_cod_value', 'number', 50000)}
+                                        label="סכום COD"
+                                        type="number"
+                                        step="0.1"
+                                    />
+                                    : "סכום COD: "+state.pickups_cod_value.value }
 
-                                        {state.orderSentToUps !== true &&
-                                            <div style={{marginTop: '10px', direction: 'rtl'}}>
-                                                <div>גביית תשלום במעמד הפצה</div>
-                                                <InlineError message='איסוף התשלום במזומן מוגבל עד 5,000 ש"ח ובצק עד 50,000 ש"ח.'
-                                                             fieldID="pickups_cod_value"/>
-                                            </div>
-                                        }
-                                    </Card>
+                                {state.orderSentToUps !== true &&
+                                <div style={{marginTop: '10px', direction: 'rtl'}}>
+                                    <div>גביית תשלום במעמד הפצה</div>
+                                    <InlineError message='איסוף התשלום במזומן מוגבל עד 5,000 ש"ח ובצק עד 50,000 ש"ח.'
+                                                 fieldID="pickups_cod_value"/>
                                 </div>
-                            }
+                                }
+                            </Card>
+                            <Card sectioned>
+                                {state.orderSentToUps !== true ?
+                                    <TextField
+                                        value={state.pickups_cod_details.value === 'X' ? '' : state.pickups_cod_details.value}
+                                        onChange={this.handleChange('pickups_cod_details', 'text')}
+                                        label="הערות COD"
+                                        type="text"
+                                        maxLength={50}
+                                    />
+                                    : "הערות COD: "+state.pickups_cod_details.value }
+                            </Card>
                         </div>
 
-                        <div style={{direction: 'rtl', textAlign: 'right'}}>
-                            {state.orderSentToUps !== true ?
-                                <SettingToggle
-                                    action={{
-                                        content: state.pickups_is_udr.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
-                                        onAction: this.toggleIsUDR,
-                                    }}
-                                    enabled={state.pickups_is_udr.value}>
-                                    UDR: <TextStyle
-                                    variation="strong">{state.pickups_is_udr.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>
-                                    <div>החתמה והחזרת ניירת</div>
-                                </SettingToggle>
-                                :
-                                <Card sectioned>
-                                    UDR: {state.pickups_is_udr.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}
-                                </Card>
-                            }
+                        <div style={{margin: '2rem 0', direction: 'rtl', textAlign: 'right'}}>
+                            <Card sectioned>
+                                <Checkbox
+                                    label={"UDR: "+(state.pickups_is_udr.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
+                                    checked={state.pickups_is_udr.value === 'true'}
+                                    onChange={this.toggleIsUDR}
+                                    disabled={state.orderSentToUps === true}
+                                />
+                                <div>החתמה והחזרת ניירת</div>
+                            </Card>
                         </div>
 
                         {state.pickups_is_udr.value === 'true' &&
-                        <div style={{margin: '2rem 0 0', direction: 'rtl', textAlign: 'right'}}>
-                            {state.orderSentToUps !== true ?
-                                <SettingToggle
-                                    action={{
-                                        content: state.pickups_is_return.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
-                                        onAction: this.toggleIsReturn,
-                                    }}
-                                    enabled={state.pickups_is_return.value}>
-                                    איסוף כנגד הפצה: <TextStyle
-                                    variation="strong">{state.pickups_is_return.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>
-                                </SettingToggle>
-                                :
-                                <Card sectioned>
-                                    איסוף כנגד הפצה: {state.pickups_is_return.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}
-                                </Card>
-                                }
+                        <div style={{margin: '2rem 0', direction: 'rtl', textAlign: 'right'}}>
+                            <Card sectioned>
+                                <Checkbox
+                                    label={"איסוף כנגד הפצה: "+(state.pickups_is_return.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
+                                    checked={state.pickups_is_return.value === 'true'}
+                                    onChange={this.toggleIsReturn}
+                                    disabled={state.orderSentToUps === true}
+                                />
+                            </Card>
                         </div>
                         }
+
+                        <div style={{margin: '2rem 0 0', direction: 'rtl', textAlign: 'right'}}>
+                            <Card sectioned>
+                                <Checkbox
+                                    label={"DDO: "+(state.pickups_is_ddo.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
+                                    checked={state.pickups_is_ddo.value === 'true'}
+                                    onChange={this.toggleIsDDO}
+                                    disabled={state.orderSentToUps === true}
+                                />
+                                <div>שירות מסירה בכתובת מוגדרת</div>
+                            </Card>
+                        </div>
 
                     </Layout.AnnotatedSection>
                     }
                     <Layout.AnnotatedSection title="Multiple Packages">
                         <Card sectioned>
-                            <div style={{textAlign: 'right'}}>
-                                {state.orderSentToUps !== true ?
+                            <div style={{textAlign: 'right', direction: 'rtl'}}>
+                                {state.orderSentToUps !== true && state.customerType === 'אשראי' ?
                                     <TextField
                                         value={state.pickups_num_of_packages.value}
                                         onChange={this.handleChange('pickups_num_of_packages','number', 99)}
@@ -346,6 +330,25 @@ class Index extends Component {
         this.setState({'savedText': '✔ Saved!'})
 
         setTimeout(() => this.setState({'savedText': ''}), 3000)
+    };
+
+    checkAuthInformation = async (shop) => {
+        try {
+            const response = await fetch(`api/get-shipping-data`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({'shop': shop, 'isPrivate': true, 'checkAuthInformation': true})
+            });
+
+            const json = await response.json();
+
+            this.setState({'customerType': json.customerType })
+        } catch (e){
+
+        }
     };
 
     handleChange = (field, type, max = null) => {

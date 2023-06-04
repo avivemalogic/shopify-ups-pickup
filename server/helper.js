@@ -30,14 +30,14 @@ function isPickUpsShippingMethod(shippingMethod){
     return shippingMethod.includes('Access Points UPS') || shippingMethod.includes('UPS PickUp') || shippingMethod.includes('pickups_')
 }
 
-async function getShippingData(shop){
+async function getShippingData(shop, checkAuth = false){
     const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop, 'isPrivate': true})
+        body: JSON.stringify({'shop': shop, 'isPrivate': true, 'checkAuthInformation': checkAuth})
     });
 
     try {
@@ -824,8 +824,8 @@ function getOrderPhoneNumber(order){
     return order.shipping_address.phone;
 }
 
-function getNumberOfPackages(additionalInformation){
-    const numOfPackages = Number(additionalInformation['orderNumOfPackages']);
+function getNumberOfPackages(additionalInformation, customerType){
+    const numOfPackages = customerType !== 'אשראי' ? 1 : Number(additionalInformation['orderNumOfPackages']);
     if(numOfPackages > 99){
         return 99;
     }
