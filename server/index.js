@@ -11,6 +11,7 @@ const session = require('koa-session');
 const { insertAccessToken } = require('./helper');
 const { createPickUpsOptions, addPickupPointScripts, addCarriersService, createWebhook } = require('./init');
 const router = require('./routes');
+const cronJob = require('./cronJob');
 
 dotenv.config();
 
@@ -86,6 +87,8 @@ app.prepare().then(() => {
         ctx.respond = false;
         ctx.res.statusCode = 200;
     });
+
+    cronJob();
 
     server.listen(port, () => {
         // ready
