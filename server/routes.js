@@ -274,68 +274,6 @@ router.post('/api/save-order-additional-info', bodyParser(), async (ctx, next) =
 
     ctx.body = await getResponseJsonAndSaveLogs('save-order-additional-info', shop, apiUrl, requestOptions, metafieldsResponse);
     ctx.statusCode = 200;
-/*
-    const data = ctx.request.body;
-    const shop = data.shop;
-    const orderId = data.orderId;
-    const orderIsDDO = data.orderIsDDO || '';
-    const orderCODDetails = data.orderCODDetails || '';
-    const orderCODValue = data.orderCODValue || '';
-    const orderIsUDR = data.orderIsUDR || '';
-    const orderIsReturn = data.orderIsReturn || '';
-    const orderNumOfPackages = data.orderNumOfPackages || '';
-
-    const accessToken = await getAccessToken(shop);
-
-    const requestOptions = {
-        method: 'POST',
-        headers: getShopifyRequestHeaders(accessToken),
-        body: JSON.stringify({
-            "metafields":
-                [{
-                    "namespace": "ups_pickup",
-                    "key": "pickups_is_ddo",
-                    "value": orderIsDDO,
-                    "type": "string"
-                },
-                {
-                    "namespace": "ups_pickup",
-                    "key": "pickups_cod_details",
-                    "value": orderCODDetails,
-                    "type": "string"
-                },
-                {
-                    "namespace": "ups_pickup",
-                    "key": "pickups_cod_value",
-                    "value": orderCODValue,
-                    "type": "string"
-                },
-                {
-                    "namespace": "ups_pickup",
-                    "key": "pickups_is_udr",
-                    "value": orderIsUDR,
-                    "type": "string"
-                },
-                {
-                    "namespace": "ups_pickup",
-                    "key": "pickups_is_return",
-                    "value": orderIsReturn,
-                    "type": "string"
-                },
-                {
-                    "namespace": "ups_pickup",
-                    "key": "pickups_num_of_packages",
-                    "value": orderNumOfPackages,
-                    "type": "string"
-                }]
-        })
-    };
-
-    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}/metafields.json`;
-    const metafieldsResponse = await fetch(apiUrl, requestOptions);
-
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-additional-info', shop, apiUrl, requestOptions, metafieldsResponse);
-    ctx.statusCode = 200;*/
 })
 
 router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) => {

@@ -38,10 +38,6 @@ export default async (req, res) => {
     const urlParams = new URLSearchParams(requestQuery);
     let output = '';
 
-    if(!hmacVerified && verifyHmac(requestQuery, hmac, false) === false){
-        output = 'Auth Error';
-    }
-
     const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
         method: 'POST',
         headers: {

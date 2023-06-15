@@ -39,10 +39,6 @@ export default async (req, res) => {
     let isPickups = false;
     let orderSentToUps = false;
 
-    if(!hmacVerified && verifyHmac(requestQuery, hmac, false) === false){
-        output = 'Auth Error';
-    }
-
     if(output === '') {
         const getOrderJson = await getOrderData(shop, orderId);
         if (getOrderJson.errors) {
@@ -58,6 +54,7 @@ export default async (req, res) => {
             }
         }
     }
+
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html');
     res.redirect(`/settings?${urlParams}&output=${output}&is_pickups=${isPickups}&send_to_ups=${orderSentToUps}`);

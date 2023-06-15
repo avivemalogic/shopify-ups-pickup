@@ -71,9 +71,9 @@ class Output extends Component {
                     </Layout.AnnotatedSection>
                     <Layout.AnnotatedSection>
                         <Button
-                            onClick={this.buttonClick}
+                            onClick={this.backToOrderClick}
                         >
-                            Back to Orders
+                            Back to Order
                         </Button>
                     </Layout.AnnotatedSection>
                 </Layout>
@@ -85,7 +85,7 @@ class Output extends Component {
         window.PickupsSDK.onClick();
     }
 
-    buttonClick = () => {
+    backToOrderClick = () => {
         try {
             history.back();
         }catch (e) {
@@ -96,7 +96,7 @@ class Output extends Component {
 
             const redirect = Redirect.create(app);
             redirect.dispatch(Redirect.Action.ADMIN_PATH, {
-                path: '/orders'
+                path: `/admin/orders/${this.state.orderId}`
             });
         }
     }

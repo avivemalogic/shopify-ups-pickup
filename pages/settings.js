@@ -1,3 +1,5 @@
+import createApp from "@shopify/app-bridge";
+
 const { HOST } = process.env;
 import {
     Button,
@@ -20,6 +22,7 @@ import {
 } from '@shopify/polaris';
 import { CircleTickMajor } from "@shopify/polaris-icons";
 import React, { Component } from 'react';
+import {Redirect} from "@shopify/app-bridge/actions";
 
 async function getOrderAdditionalInfo(shop, orderId){
     const getOrderMetafieldsResponse = await fetch(`${HOST}api/get-waybill-number`, {
@@ -87,6 +90,8 @@ class Index extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            'output': [],
+            'apiKey': API_KEY,
             'savedText': '',
             'isLoading': true,
             'orderId': '',
@@ -110,6 +115,7 @@ class Index extends Component {
         const orderId = query.id;
         const isPickups = query.is_pickups;
         const orderSentToUps = query.send_to_ups;
+        const output = query.output;
 
         let data = '';
 
@@ -117,7 +123,7 @@ class Index extends Component {
             // Get order Data
             const json = await getOrderAdditionalInfo(shop, orderId);
 
-            data = Object.assign(json, {'shop': shop, 'orderId': orderId, 'isPickups': isPickups, 'orderSentToUps': orderSentToUps});
+            data = Object.assign(json, {'shop': shop, 'orderId': orderId, 'output': output, 'isPickups': isPickups, 'orderSentToUps': orderSentToUps});
         }
 
         return {
@@ -129,12 +135,11 @@ class Index extends Component {
         const orderId = this.props.data.orderId;
         const isPickups = this.props.data.isPickups;
         const orderSentToUps = this.props.data.orderSentToUps;
-
-        console.log('orderSentToUps', orderSentToUps)
-        console.log('orderSentToUps true?', orderSentToUps === 'true')
+        const output = this.props.data.output;
 
         if(shop){
             this.setState({
+                'output': output,
                 'shop': shop,
                 'orderId': orderId,
                 'isPickups': isPickups === 'true',
@@ -180,118 +185,194 @@ class Index extends Component {
         return (
             <Page>
                 <Layout>
-                    {state.isPickups === false &&
-                    <Layout.AnnotatedSection title="UPS Additional Options">
-                        <div style={{margin: '2rem 0', direction: 'rtl', textAlign: 'right'}}>
-                            <Card sectioned>
-                                {state.orderSentToUps !== true ?
-                                    <TextField
-                                        value={state.pickups_cod_value.value === '' ? '' : state.pickups_cod_value.value}
-                                        onChange={this.handleChange('pickups_cod_value', 'number', 50000)}
-                                        label="סכום COD"
-                                        type="number"
-                                        step="0.1"
-                                    />
-                                    : "סכום COD: "+state.pickups_cod_value.value }
 
-                                {state.orderSentToUps !== true &&
-                                <div style={{marginTop: '10px', direction: 'rtl'}}>
-                                    <div>גביית תשלום במעמד הפצה</div>
-                                    <InlineError message='איסוף התשלום במזומן מוגבל עד 5,000 ש"ח ובצק עד 50,000 ש"ח.'
-                                                 fieldID="pickups_cod_value"/>
-                                </div>
-                                }
-                            </Card>
-                            <Card sectioned>
-                                {state.orderSentToUps !== true ?
-                                    <TextField
-                                        value={state.pickups_cod_details.value === 'X' ? '' : state.pickups_cod_details.value}
-                                        onChange={this.handleChange('pickups_cod_details', 'text')}
-                                        label="הערות COD"
-                                        type="text"
-                                        maxLength={50}
-                                    />
-                                    : "הערות COD: "+state.pickups_cod_details.value }
-                            </Card>
-                        </div>
-
-                        <div style={{margin: '2rem 0', direction: 'rtl', textAlign: 'right'}}>
-                            <Card sectioned>
-                                <Checkbox
-                                    label={"UDR: "+(state.pickups_is_udr.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
-                                    checked={state.pickups_is_udr.value === 'true'}
-                                    onChange={this.toggleIsUDR}
-                                    disabled={state.orderSentToUps === true}
-                                />
-                                <div>החתמה והחזרת ניירת</div>
-                            </Card>
-                        </div>
-
-                        {state.pickups_is_udr.value === 'true' &&
-                        <div style={{margin: '2rem 0', direction: 'rtl', textAlign: 'right'}}>
-                            <Card sectioned>
-                                <Checkbox
-                                    label={"איסוף כנגד הפצה: "+(state.pickups_is_return.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
-                                    checked={state.pickups_is_return.value === 'true'}
-                                    onChange={this.toggleIsReturn}
-                                    disabled={state.orderSentToUps === true}
-                                />
-                            </Card>
-                        </div>
-                        }
-
-                        <div style={{margin: '2rem 0 0', direction: 'rtl', textAlign: 'right'}}>
-                            <Card sectioned>
-                                <Checkbox
-                                    label={"DDO: "+(state.pickups_is_ddo.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
-                                    checked={state.pickups_is_ddo.value === 'true'}
-                                    onChange={this.toggleIsDDO}
-                                    disabled={state.orderSentToUps === true}
-                                />
-                                <div>שירות מסירה בכתובת מוגדרת</div>
-                            </Card>
-                        </div>
-
-                    </Layout.AnnotatedSection>
-                    }
-                    <Layout.AnnotatedSection title="Multiple Packages">
-                        <Card sectioned>
-                            <div style={{textAlign: 'right', direction: 'rtl'}}>
-                                {state.orderSentToUps !== true && state.customerType === 'אשראי' ?
-                                    <TextField
-                                        value={state.pickups_num_of_packages.value}
-                                        onChange={this.handleChange('pickups_num_of_packages','number', 99)}
-                                        label="כמות חבילות"
-                                        type="number"
-                                    />
-                                    : "כמות חבילות: "+(state.pickups_num_of_packages.value || 1) }
-                            </div>
-                        </Card>
-                    </Layout.AnnotatedSection>
-
-                    { state.isLoading ? <div style={{height: '100px'}}><Frame><Loading/></Frame></div> : ''}
-
-                    {state.orderSentToUps === true ?
-                        <div style={{marginTop: '10px', direction: 'rtl', textAlign: 'right', flexBasis: '100%'}}>
-                            <InlineError message="ההזמנה נשלחה ולכן לא ניתן לבצע שינויים"/>
-                        </div>
+                    {this.state.output ?
+                        <div dangerouslySetInnerHTML={{__html: this.state.output}}></div>
                         :
-                        <Layout.AnnotatedSection>
-                            <Form onSubmit={(e) => this.handleSubmit(e)} disabled={state.isLoading}>
-                                <FormLayout>
-                                    <Stack distribution="trailing">
-                                        {state.savedText ? <span>{state.savedText}</span> : ''}
-                                        <Button primary submit>
-                                            Save
-                                        </Button>
-                                    </Stack>
-                                </FormLayout>
-                            </Form>
-                        </Layout.AnnotatedSection>
+                        <div>
+                            {!state.isLoading &&
+                            <div>
+                                {state.customerType !== 'אשראי' ?
+                                    <Layout.AnnotatedSection>
+                                        <Card sectioned>סימון שירותים מיוחדים אפשרי ללקוחות אשראי בלבד</Card>
+                                    </Layout.AnnotatedSection>
+                                    :
+                                    <div>
+                                        {state.isPickups === true ?
+                                            <Layout.AnnotatedSection>
+                                                <Card sectioned>סימון שירותים מיוחדים אפשרי עבור רמת שירות שליח עד הבית בלבד</Card>
+                                            </Layout.AnnotatedSection>
+                                            :
+                                            <div>
+                                                <Layout.AnnotatedSection title="UPS Additional Options">
+                                                    <div style={{
+                                                        margin: '2rem 0',
+                                                        direction: 'rtl',
+                                                        textAlign: 'right'
+                                                    }}>
+                                                        <Card sectioned>
+                                                            {state.orderSentToUps !== true ?
+                                                                <TextField
+                                                                    value={state.pickups_cod_value.value === '' ? '' : state.pickups_cod_value.value}
+                                                                    onChange={this.handleChange('pickups_cod_value', 'number', 50000)}
+                                                                    label="סכום COD"
+                                                                    type="number"
+                                                                    step="0.1"
+                                                                />
+                                                                : "סכום COD: " + state.pickups_cod_value.value}
+
+                                                            {state.orderSentToUps !== true &&
+                                                            <div style={{marginTop: '10px', direction: 'rtl'}}>
+                                                                <div>גביית תשלום במעמד הפצה</div>
+                                                                <InlineError
+                                                                    message='איסוף התשלום במזומן מוגבל עד 5,000 ש"ח ובצ&apos;ק עד 50,000 ש"ח.'
+                                                                    fieldID="pickups_cod_value"/>
+                                                            </div>
+                                                            }
+                                                        </Card>
+                                                        <Card sectioned>
+                                                            {state.orderSentToUps !== true ?
+                                                                <TextField
+                                                                    value={state.pickups_cod_details.value === 'X' ? '' : state.pickups_cod_details.value}
+                                                                    onChange={this.handleChange('pickups_cod_details', 'text')}
+                                                                    label="הערות COD"
+                                                                    type="text"
+                                                                    maxLength={50}
+                                                                />
+                                                                : "הערות COD: " + state.pickups_cod_details.value}
+                                                        </Card>
+                                                    </div>
+
+                                                    <div style={{
+                                                        margin: '2rem 0',
+                                                        direction: 'rtl',
+                                                        textAlign: 'right'
+                                                    }}>
+                                                        <Card sectioned>
+                                                            <Checkbox
+                                                                label={"UDR: " + (state.pickups_is_udr.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
+                                                                checked={state.pickups_is_udr.value === 'true'}
+                                                                onChange={this.toggleIsUDR}
+                                                                disabled={state.orderSentToUps === true}
+                                                            />
+                                                            <div>החתמה והחזרת ניירת</div>
+                                                        </Card>
+                                                    </div>
+
+                                                    {state.pickups_is_udr.value === 'true' &&
+                                                    <div style={{
+                                                        margin: '2rem 0',
+                                                        direction: 'rtl',
+                                                        textAlign: 'right'
+                                                    }}>
+                                                        <Card sectioned>
+                                                            <Checkbox
+                                                                label={"איסוף כנגד הפצה: " + (state.pickups_is_return.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
+                                                                checked={state.pickups_is_return.value === 'true'}
+                                                                onChange={this.toggleIsReturn}
+                                                                disabled={state.orderSentToUps === true}
+                                                            />
+                                                        </Card>
+                                                    </div>
+                                                    }
+
+                                                    <div style={{
+                                                        margin: '2rem 0 0',
+                                                        direction: 'rtl',
+                                                        textAlign: 'right'
+                                                    }}>
+                                                        <Card sectioned>
+                                                            <Checkbox
+                                                                label={"DDO: " + (state.pickups_is_ddo.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}
+                                                                checked={state.pickups_is_ddo.value === 'true'}
+                                                                onChange={this.toggleIsDDO}
+                                                                disabled={state.orderSentToUps === true}
+                                                            />
+                                                            <div>שירות מסירה בכתובת מוגדרת</div>
+                                                        </Card>
+                                                    </div>
+
+                                                </Layout.AnnotatedSection>
+
+
+                                                <Layout.AnnotatedSection title="Multiple Packages">
+                                                    <Card sectioned>
+                                                        <div style={{textAlign: 'right', direction: 'rtl'}}>
+                                                            {state.orderSentToUps !== true ?
+                                                                <TextField
+                                                                    value={state.pickups_num_of_packages.value}
+                                                                    onChange={this.handleChange('pickups_num_of_packages', 'number', 99)}
+                                                                    label="כמות חבילות"
+                                                                    type="number"
+                                                                />
+                                                                : "כמות חבילות: " + (state.pickups_num_of_packages.value || 1)}
+                                                        </div>
+                                                    </Card>
+                                                </Layout.AnnotatedSection>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            }
+
+                            {state.isLoading ? <div style={{height: '100px'}}><Frame><Loading/></Frame></div> : ''}
+
+                            <Layout.AnnotatedSection>
+                                <Form onSubmit={(e) => this.handleSubmit(e)} disabled={state.isLoading}>
+                                    <FormLayout>
+                                        <Stack>
+                                            {(state.isPickups !== true || state.customerType === 'מזומן') &&
+                                                <div>
+                                                    {state.orderSentToUps === true ?
+                                                        <div style={{
+                                                            marginTop: '10px',
+                                                            direction: 'rtl',
+                                                            textAlign: 'right',
+                                                            flexBasis: '100%'
+                                                        }}>
+                                                            <InlineError message="ההזמנה נשלחה ולכן לא ניתן לבצע שינויים"/>
+                                                        </div>
+                                                        :
+                                                        <div>
+                                                            {state.savedText ? <span>{state.savedText}</span> : ''}
+                                                            <Button primary submit>
+                                                                Save
+                                                            </Button>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            <Button
+                                                onClick={this.backToOrderClick}
+                                            >
+                                                Back to Order
+                                            </Button>
+                                        </Stack>
+                                    </FormLayout>
+                                </Form>
+                            </Layout.AnnotatedSection>
+                        </div>
                     }
                 </Layout>
             </Page>
         );
+    }
+
+    backToOrderClick = () => {
+        try {
+            history.back();
+        }catch (e) {
+            const app = createApp({
+                apiKey: this.state.apiKey,
+                shopOrigin: this.state.shop,
+            });
+
+            const redirect = Redirect.create(app);
+            redirect.dispatch(Redirect.Action.ADMIN_PATH, {
+                path: `/admin/orders/${this.state.orderId}`
+            });
+        }
     }
 
     handleSubmit = async (e) => {
