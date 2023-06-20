@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { HOST, SHOPIFY_API_SECRET_KEY, API_VERSION, DEBUG_MODE, SEQ_URL } = process.env;
+const { ENV, HOST, SHOPIFY_API_SECRET_KEY, API_VERSION, DEBUG_MODE, SEQ_URL } = process.env;
 const crypto = require('crypto');
 const querystring = require('querystring');
 const DB_URL = 'http://api-shopify.emalogic.com';
@@ -369,9 +369,12 @@ async function mergePdf(pdfList, format){
     const pdfFile = Buffer.from(pdfFinal, pdfEncodingType);
 
     const pdfDir = 'ups-labels';
-    // TODO: add condition if is prod/stage or dev
-    const serverPdfDir = `./public/${pdfDir}`;
-    //const serverPdfDir = '/mnt/ups-labels';
+
+    let serverPdfDir = `./public/${pdfDir}`;
+    if (ENV === 'production' || ENV === 'staging') {
+        serverPdfDir = '/mnt/ups-labels';
+    }
+
     const uniqueId = Date.now() * 123
     const pdfFilename = `ups_${format.toLowerCase()}_${uniqueId}.pdf`;
 
