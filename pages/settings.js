@@ -214,7 +214,7 @@ class Index extends Component {
                                                             {state.orderSentToUps !== true ?
                                                                 <TextField
                                                                     value={state.pickups_cod_value.value === '' ? '' : state.pickups_cod_value.value}
-                                                                    onChange={this.handleChange('pickups_cod_value', 'number', 50000)}
+                                                                    onChange={this.handleChange('pickups_cod_value', 'number', 50000, 0.1)}
                                                                     label="סכום COD"
                                                                     type="number"
                                                                     step="0.1"
@@ -301,7 +301,7 @@ class Index extends Component {
                                                             {state.orderSentToUps !== true ?
                                                                 <TextField
                                                                     value={state.pickups_num_of_packages.value}
-                                                                    onChange={this.handleChange('pickups_num_of_packages', 'number', 99)}
+                                                                    onChange={this.handleChange('pickups_num_of_packages', 'number', 99, 1)}
                                                                     label="כמות חבילות"
                                                                     type="number"
                                                                 />
@@ -432,10 +432,10 @@ class Index extends Component {
         }
     };
 
-    handleChange = (field, type, max = null) => {
+    handleChange = (field, type, max = null, min = 0) => {
         return (val) => {
             if(type === 'number'){
-                if(val < 0 || (max !== null && val > max)) {
+                if(val < min || (max !== null && val > max)) {
                     return;
                 }
             }
