@@ -322,7 +322,7 @@ class Index extends Component {
                                 <Form onSubmit={(e) => this.handleSubmit(e)} disabled={state.isLoading}>
                                     <FormLayout>
                                         <Stack>
-                                            {(state.isPickups !== true || state.customerType === 'מזומן') &&
+                                            {(state.isPickups !== true && state.customerType === 'אשראי' && !state.isLoading) &&
                                                 <div>
                                                     {state.orderSentToUps === true ?
                                                         <div style={{
