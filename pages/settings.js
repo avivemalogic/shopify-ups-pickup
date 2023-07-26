@@ -259,7 +259,6 @@ class Index extends Component {
                                                         </Card>
                                                     </div>
 
-                                                    {state.pickups_is_udr.value === 'true' &&
                                                     <div style={{
                                                         margin: '2rem 0',
                                                         direction: 'rtl',
@@ -272,15 +271,8 @@ class Index extends Component {
                                                                 onChange={this.toggleIsReturn}
                                                                 disabled={state.orderSentToUps === true}
                                                             />
+                                                            <div>השירות זמין רק עבור חבילה אחת</div>
                                                         </Card>
-                                                    </div>
-                                                    }
-
-                                                    <div style={{
-                                                        margin: '2rem 0 0',
-                                                        direction: 'rtl',
-                                                        textAlign: 'right'
-                                                    }}>
                                                         <Card sectioned>
                                                             <Checkbox
                                                                 label={"DDO: " + (state.pickups_is_ddo.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS)}

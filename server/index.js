@@ -19,7 +19,7 @@ const port = parseInt(process.env.PORT, 10) || 3000;
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
-const sharedFilesDir = '/mnt/shared/';
+const sharedFilesDir = '/mnt/ups-labels/';
 const { ENV, HOST, SHOPIFY_API_SECRET_KEY, SHOPIFY_API_KEY, API_VERSION } = process.env;
 
 app.prepare().then(() => {

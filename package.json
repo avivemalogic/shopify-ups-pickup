@@ -1,6 +1,6 @@
 {
   "name": "shopify-ups-pickup",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -13,10 +13,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@shopify/app-bridge": "^1.28.0",
-    "@shopify/app-bridge-react": "^1.28.0",
-    "@shopify/koa-shopify-auth": "^3.1.70",
+    "@shopify/app-bridge": "^3.7.8",
+    "@shopify/app-bridge-react": "^3.7.8",
+    "@shopify/koa-shopify-auth": "^5.0.3",
     "@shopify/polaris": "^6.2.0",
+    "cron": "^2.3.1",
     "dotenv": "^8.2.0",
     "isomorphic-fetch": "^3.0.0",
     "koa": "^2.13.0",
