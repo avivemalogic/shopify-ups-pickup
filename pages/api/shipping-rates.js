@@ -1,5 +1,4 @@
-const { HOST } = process.env;
-const { getClosestPoints, getProductData, getDate } = require('../../server/helper');
+const { getClosestPoints, getProductData, getDate, getAccessToken, getShippingData } = require('../../server/helper');
 
 function getAvailableRates(data, serviceNamePrefix, price){
     const arr = [];
@@ -36,16 +35,10 @@ export default async (req, res) => {
         return res.end('Shop not Found');
     }
 
-    console.log(getDate()+' shipping-rates shop: '+shop+' | before get-shipping-data');
-    const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'isPrivate': true})
-    });
-    const shippingDataJson = await shippingDataResponse.json();
+    const accessToken = await getAccessToken(shop);
+
+    const shippingDataJson = await getShippingData(shop, accessToken);
+
     const shippingDataFields = shippingDataJson.metafields;
 
     const isEnabled = shippingDataFields.find((item) => item.key === 'closestPointsEnabled').value;
@@ -82,7 +75,7 @@ export default async (req, res) => {
         for(let i = 0, iLength = cartItems.length; i < iLength; ++i){
             const productId = cartItems[i].product_id;
 
-            const productData = await getProductData(shop, productId);
+            const productData = await getProductData(shop, accessToken, productId);
             try {
                 const productTagIsFreeShipping = productData.product.tags.includes('pickup_free');
                 if(productTagIsFreeShipping){
@@ -109,8 +102,6 @@ export default async (req, res) => {
             console.log(getDate()+' shipping-rates shop: '+shop+' | errors: ', data);
             return res.end(data['errors']);
         }
-
-        console.log(getDate()+' shipping-rates shop: '+shop+' | data: ', data);
 
         const output = {
             "rates": getAvailableRates(data['response'], serviceName, price)

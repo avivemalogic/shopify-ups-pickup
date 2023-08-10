@@ -15,7 +15,7 @@ async function createPickUpsOptions(shop, accessToken, install = false){
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({'shop': shop, 'isPrivate': true})
+            body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'isPrivate': true})
         });
         const getShippingDataJson = await getShippingData.json();
 

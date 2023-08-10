@@ -1,90 +1,4 @@
-const { HOST } = process.env;
-const { getOrderAdditionalInfo, getNumberOfPackages, validatePhoneNumber, getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate } = require('../../server/helper');
-
-async function getOrderPickupsData(shop, orderId){
-    const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 'shop': shop, 'orderId': orderId })
-    });
-
-    const getWaybillNumberJson = await getWaybillNumberResponse.json();
-
-    let orderSentToUps = false;
-    let orderPickupPoint = '';
-    let orderLeadId = '';
-    getWaybillNumberJson.metafields.forEach((item) => {
-        if(item.key === 'pickups_point_wb'){
-            orderSentToUps = true;
-        }
-        if(item.key === 'pickups_point_lead_id'){
-            orderLeadId = item.value
-        }
-        if(item.key === 'pickups_point_json'){
-            orderPickupPoint = JSON.parse(item.value)
-        }
-    })
-
-    return { 'orderSentToUps': orderSentToUps, 'orderPickupPoint': orderPickupPoint, 'orderLeadId': orderLeadId};
-}
-
-async function saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight, additionalTags = null){
-    const response = await fetch(`${HOST}api/save-order-waybill-number`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'orderTags': orderTags, 'orderWeight': orderWeight, 'additionalTags': additionalTags})
-    });
-
-    return await response.json();
-}
-
-async function saveLeadIdOnOrder(shop, orderId, leadId, orderTags, orderWeight){
-    const response = await fetch(`${HOST}api/save-order-leadid`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'leadId': leadId, 'orderTags': orderTags})
-    });
-
-    return await response.json();
-}
-
-async function fullfillOrderItems(shop, orderId, wayBillNumber, customerNotify){
-    const response = await fetch(`${HOST}api/fullfill-order-items`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'customerNotify': customerNotify})
-    });
-
-    return await response.json();
-}
-
-async function saveOrderTagError(shop, orderId, orderTags, error){
-    if(orderTags.includes(error)){
-        return true;
-    }
-    const response = await fetch(`${HOST}api/save-order-tags-error`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'orderError': `UPS Error: ${error}`, 'orderTags': orderTags})
-    });
-
-    return await response.json();
-}
+const { getOrderAdditionalInfo, getNumberOfPackages, validatePhoneNumber, getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate, getAccessToken, getOrderPickupsData, saveOrderTagError, getOrderWeight, saveWayBillNumberOnOrder, saveLeadIdOnOrder, fullfillOrderItems, isFulfillOrderItemsEnabled, isFulfillOrderItemsCustomerNotify } = require('../../server/helper');
 
 function getHouseNumber(streetAddress){
     const houseNumber = streetAddress.match(/[0-9]+/g);
@@ -110,27 +24,7 @@ function splitPhonePrefix(phoneNumber){
     }
 }
 
-function getOrderWeight(integrationData, orderItems){
-    const defaultWeight = 1;
-
-    const orderWeightType = getFieldFromIntegrationData(integrationData,'upsIntegrationOrderWeight');
-    if(orderWeightType === 'fixed_value'){
-        const itemsTotalWeight = getFieldFromIntegrationData(integrationData,'upsIntegrationOrderWeightValue');
-        if(itemsTotalWeight > 0){
-            return itemsTotalWeight;
-        }
-        return defaultWeight;
-    }
-
-    let itemsTotalWeight = orderItems.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
-
-    if(itemsTotalWeight > 0){
-        return itemsTotalWeight/1000;
-    }
-    return defaultWeight;
-}
-
-async function restApiSendToUps(shop, accessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags){
+async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags){
     let apiHost = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl');
 
     if(!apiHost || apiHost === 'X'){
@@ -162,7 +56,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     const reference2 = getReference2Field(reference2Type, getOrderJson.order, orderPickupsData, shippingData).substring(0, 36);
     const shipmentInstructions = streetAddress;
 
-    const orderAdditionalInfo = await getOrderAdditionalInfo(shop, orderOriginalId);
+    const orderAdditionalInfo = await getOrderAdditionalInfo(shop, accessToken, orderOriginalId);
     const customerType = shippingData['customerType'] || null;
 
     if(!isValidPhoneNumber(phoneNumber)){
@@ -224,7 +118,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
                     })
 
                     try {
-                        await saveOrderPickupPoint(shop, orderOriginalId, pickupPoint, false);
+                        await saveOrderPickupPoint(shop, accessToken, orderOriginalId, pickupPoint, getOrderJson, false);
                     } catch (e) {
                         console.log(getDate()+' Error: '+e)
                     }
@@ -266,7 +160,7 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + accessToken
+            'Authorization': 'Bearer ' + apiAccessToken
         },
         body: JSON.stringify(functionArgs)
     };
@@ -303,14 +197,6 @@ async function restApiSendToUps(shop, accessToken, shippingData, integrationData
     return { 'wayBillNumber': trackingNumber, 'leadId': leadId, 'closestPointAccuracyLabel': closestPointAccuracyLabel  };
 }
 
-function isFulfillOrderItemsEnabled(integrationData){
-    return getFieldFromIntegrationData(integrationData,'fulfillOrderItems') === 'true';
-}
-
-function isFulfillOrderItemsCustomerNotify(integrationData){
-    return getFieldFromIntegrationData(integrationData,'fulfillOrderItemsNotify') === 'true';
-}
-
 export default async (req, res) => {
     const shop = req.query.shop;
     const hmac = req.query.hmac;
@@ -329,7 +215,9 @@ export default async (req, res) => {
 
     if(output === '') {
 
-        await updatedMetafields(shop);
+        const accessToken = await getAccessToken(shop);
+
+        await updatedMetafields(shop, accessToken);
 
         if (Array.isArray(orderIds) === false) {
             orderIds = [orderIds];
@@ -342,7 +230,7 @@ export default async (req, res) => {
             if (output !== '') {
                 output += '<br />';
             }
-            const getOrderJson = await getOrderData(shop, orderId);
+            const getOrderJson = await getOrderData(shop, accessToken, orderId);
             if (getOrderJson.errors) {
                 output += `${getOrderJson.errors}`;
                 continue;
@@ -352,7 +240,7 @@ export default async (req, res) => {
             const orderTags = getOrderJson.order.tags;
             const errorsPrefix = `Cant send order ${orderName} to Ups - `;
 
-            const orderPickupsData = await getOrderPickupsData(shop, orderId);
+            const orderPickupsData = await getOrderPickupsData(shop, accessToken, orderId);
             if (orderPickupsData.orderSentToUps) {
                 output += `Order ${orderName} Already Sent to Ups`;
                 continue;
@@ -362,7 +250,7 @@ export default async (req, res) => {
                 continue;
             }
 
-            const shippingData = await getShippingData(shop, true);
+            const shippingData = await getShippingData(shop, accessToken, true);
             if(shippingData['error']){
                 output += `${errorsPrefix} ${shippingData['message']}`;
                 continue;
@@ -370,38 +258,38 @@ export default async (req, res) => {
             const integrationData = shippingData.metafields.filter((item) => item.namespace === 'pickups-integration');
             if (!orderIntegrationIsEnabled(integrationData)) {
                 const error = 'Order Integration setting is Disabled';
-                await saveOrderTagError(shop, orderId, orderTags, error);
+                await saveOrderTagError(shop, accessToken, orderId, orderTags, error);
                 output += `${errorsPrefix} ${error}`;
                 continue;
             }
 
-            const { isLoggedIn, accessToken } = await getRestApiAccessToken(integrationData ,'create');
+            const { isLoggedIn, apiAccessToken } = await getRestApiAccessToken(integrationData ,'create');
             if (!isLoggedIn) {
                 const error = 'Rest API Auth Error';
-                await saveOrderTagError(shop, orderId, orderTags, error);
+                await saveOrderTagError(shop, accessToken, orderId, orderTags, error);
                 output += `${errorsPrefix} ${error}`;
                 continue;
             }
 
-            const upsData = await restApiSendToUps(shop, accessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags);
+            const upsData = await restApiSendToUps(shop, accessToken, apiAccessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags);
 
             if (upsData.errors) {
                 console.log('upsData.errors', upsData.errors);
-                await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
+                await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
                 output += `${errorsPrefix} ${upsData.errors}`;
                 continue;
             }
 
             const orderWeight = getOrderWeight(integrationData, getOrderJson.order.line_items);
 
-            await saveOrderWeight(shop, orderId, orderWeight);
+            await saveOrderWeight(shop, accessToken, orderId, orderWeight);
 
             if(upsData.leadId) {
                 const leadId = upsData.leadId;
 
-                const response = await saveLeadIdOnOrder(shop, orderId, leadId, orderTags, orderWeight);
+                const response = await saveLeadIdOnOrder(shop, accessToken, orderId, leadId, orderTags, orderWeight);
                 if (response.errors) {
-                    await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
+                    await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
                     output += `${errorsPrefix} ${response.errors}`;
                     continue;
                 }
@@ -410,9 +298,9 @@ export default async (req, res) => {
             }else{
                 const wayBillNumber = upsData.wayBillNumber;
 
-                const response = await saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight, upsData.closestPointAccuracyLabel);
+                const response = await saveWayBillNumberOnOrder(shop, accessToken, orderId, wayBillNumber, orderTags, orderWeight, upsData.closestPointAccuracyLabel);
                 if (response.errors) {
-                    await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
+                    await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
                     output += `${errorsPrefix} ${response.errors}`;
                     continue;
                 }
@@ -420,7 +308,7 @@ export default async (req, res) => {
                 output += `Order ${orderName} Sent to UPS `;
 
                 if(isFulfillOrderItemsEnabled(integrationData)) {
-                    const fulfillResponse = await fullfillOrderItems(shop, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
+                    const fulfillResponse = await fullfillOrderItems(shop, accessToken, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
 
                     if (fulfillResponse.errors) {
                         output += `<br /> ${fulfillResponse.errors}`;
@@ -428,13 +316,13 @@ export default async (req, res) => {
                 }
 
                 if(printLabel){
-                    const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData, 'print');
+                    const {isLoggedIn, apiAccessToken} = await getRestApiAccessToken(integrationData, 'print');
                     if (!isLoggedIn) {
                         output += `${errorsPrefix} Print API Auth Error`;
                         continue;
                     }
 
-                    const upsPrintLabel = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
+                    const upsPrintLabel = await restApiPrintLabel(apiAccessToken, integrationData, wayBillNumber, format);
 
                     if (upsPrintLabel.errors) {
                         output += `${errorsPrefix} ${upsPrintLabel.errors}`;
@@ -445,7 +333,9 @@ export default async (req, res) => {
                 }
             }
 
-            await sleep();
+            if(orderIdsLength-1 > i) {
+                await sleep();
+            }
         }
 
         if (pdfList.length > 0) {

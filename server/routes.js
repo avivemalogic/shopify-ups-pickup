@@ -11,13 +11,13 @@ const { HOST, API_VERSION,DEBUG_MODE } = process.env;
 
 router.get('/', async (ctx, next) => {
     const shop = getQueryKey(ctx, "shop");
-    const token = await getAccessToken(shop);
-    ctx.state = { shopify: { shop: shop, accessToken: token } };
+    const accessToken = await getAccessToken(shop);
+    ctx.state = { shopify: { shop: shop, accessToken: accessToken } };
     await verifyToken(ctx, next);
 
     if(shop && ctx.request.query.session) {
         try {
-            await createPickUpsOptions(shop, token);
+            await createPickUpsOptions(shop, accessToken);
         } catch (e) {
             console.log(e);
         }
@@ -29,7 +29,7 @@ router.post('/api/save-shipping-data', bodyParser(), async (ctx, next) => {
     const fields = data.fields;
     const shop = data.shop;
     let responseData = [];
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     for (const key in fields){
         const item = fields[key];
@@ -61,8 +61,7 @@ router.post('/api/save-shipping-data', bodyParser(), async (ctx, next) => {
 router.post('/api/set-shipping-data', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;
-
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     await createPickUpsOptions(shop, accessToken);
 
@@ -75,8 +74,7 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     const shop = data.shop;
     const isPrivate = data.isPrivate;
     const checkAuthInformation = data.checkAuthInformation || false;
-
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'GET',
@@ -139,7 +137,7 @@ router.post('/api/get-product-data', bodyParser(), async (ctx, next) => {
     const shop = data.shop;
     const productId = data.productId;
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'GET',
@@ -158,7 +156,7 @@ router.post('/api/get-order-pickup-point', bodyParser(), async (ctx, next) => {
     const shop = data.shop;
     const orderId = data.orderId;
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'GET',
@@ -177,9 +175,10 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
     const shop = data.shop;
     const orderId = data.orderId;
     const autoSend = data.autoSend;
+    const orderData = data.orderData;
     const pickupPoint = data.pickupPoint;
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'POST',
@@ -201,10 +200,10 @@ router.post('/api/save-order-pickup-point', bodyParser(), async (ctx, next) => {
     await getResponseJsonAndSaveLogs('save-order-pickup-point', shop, apiUrl, requestOptions, response);
 
     if(autoSend) {
-        await autoSendToUps(shop, orderId);
+        await autoSendToUps(shop, accessToken, orderId);
     }
 
-    const order = await getOrderData(shop, orderId);
+    const order = orderData || await getOrderData(shop, accessToken, orderId);
 
     const orderNote = order.order.note ? `${order.order.note}\r\n` : '';
 
@@ -240,9 +239,7 @@ router.post('/api/save-order-additional-info', bodyParser(), async (ctx, next) =
     const fields = data.fields;
     const shop = data.shop;
     const orderId = data.orderId;
-    const accessToken = await getAccessToken(shop);
-
-    console.log('data',data)
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const orderBody = {
         "order": {
@@ -262,7 +259,6 @@ router.post('/api/save-order-additional-info', bodyParser(), async (ctx, next) =
         });
     }
 
-    console.log('orderBody', orderBody);
     const requestOptions = {
         method: 'PUT',
         headers: getShopifyRequestHeaders(accessToken),
@@ -285,7 +281,7 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
     const additionalTags = data.additionalTags ? ', '+data.additionalTags : '';
     const orderWeight = data.orderWeight+' Kg';
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'POST',
@@ -332,7 +328,7 @@ router.post('/api/save-order-leadid', bodyParser(), async (ctx, next) => {
     const leadId = data.leadId;
     const orderTags = data.orderTags.split(',').filter((item) => !item.includes('UPS Error:')).join(',');
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'POST',
@@ -377,8 +373,7 @@ router.post('/api/save-order-weight', bodyParser(), async (ctx, next) => {
     const shop = data.shop;
     const orderId = data.orderId;
     const orderWeight = data.orderWeight;
-
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'POST',
@@ -409,7 +404,7 @@ router.post('/api/fullfill-order-items', bodyParser(), async (ctx, next) => {
     const customerNotify = data.customerNotify;
     let output;
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     try {
 
@@ -467,7 +462,7 @@ router.post('/api/save-order-tags-error', bodyParser(), async (ctx, next) => {
     const orderNewTagError = data.orderError;
 
     const newTag = `${orderTags.substring(0, 40)}, ${orderNewTagError.substring(0, 40)}`;
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const tagsRequestOptions = {
         method: 'PUT',
@@ -494,7 +489,7 @@ router.post('/api/save-order-phone-number', bodyParser(), async (ctx, next) => {
     const orderId = data.orderId;
     const phoneNumber = data.phoneNumber;
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'PUT',
@@ -513,7 +508,7 @@ router.post('/api/save-order-phone-number', bodyParser(), async (ctx, next) => {
     const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
     const saveOrderResponse = await fetch(apiUrl, requestOptions);
 
-    await autoSendToUps(shop, orderId);
+    await autoSendToUps(shop, accessToken, orderId);
 
     ctx.body = await getResponseJsonAndSaveLogs('save-order-phone-number', shop, apiUrl, requestOptions, saveOrderResponse);
     ctx.statusCode = 200;
@@ -524,7 +519,7 @@ router.post('/api/save-order-note', bodyParser(), async (ctx, next) => {
     const shop = data.shop;
     const orderId = data.orderId;
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'PUT',
@@ -549,8 +544,7 @@ router.post('/api/get-waybill-number', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;
     const orderId = data.orderId;
-
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'GET',
@@ -568,7 +562,7 @@ router.post('/api/get-order', bodyParser(), async (ctx, next) => {
     const shop = data.shop;
     const orderId = data.orderId;
 
-    const accessToken = await getAccessToken(shop);
+    const accessToken = data.accessToken || await getAccessToken(shop);
 
     const requestOptions = {
         method: 'GET',
@@ -590,18 +584,18 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
     const hmac = headers['x-shopify-hmac-sha256'];
     const errorPrefix = 'Auto Send to Ups: ';
 
-    console.log(getDate()+' webhook/order-create shop: '+shop+' | init');
+    console.time('webhook/order-create shop: '+shop);
 
     if(headers['x-shopify-topic'] !== 'orders/create'){
         throw new Error(`${errorPrefix} topic is wrong`);
     }
 
     try {
-        console.log(getDate()+' webhook/order-create shop: '+shop+' | before verifyHmacWebhook');
         if(!await verifyHmacWebhook(rawBody, hmac)){
             throw new Error('hmac is not verified');
         }
-        console.log(getDate()+' webhook/order-create shop: '+shop+' | after verifyHmacWebhook');
+
+        const accessToken = await getAccessToken(shop);
 
         const orderId = body.id;
         const shippingMethod = body.shipping_lines[0];
@@ -617,26 +611,20 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
         }
         const isPickups = body.shipping_lines.findIndex((item) => isPickUpsShippingMethod(item.code));
 
-        console.log(getDate()+' webhook/order-create shop: '+shop+' | before getOrderData');
-        const orderData = await getOrderData(shop, orderId);
-        console.log(getDate()+' webhook/order-create shop: '+shop+' | after getOrderData');
+        const orderData = await getOrderData(shop, accessToken, orderId);
         const pickupPoint = closestPointsChosenPoint ? closestPointsChosenPoint : orderData.order.note;
 
         if(pickupPoint !== '' && pickupPoint !== null) {
             try {
                 if(isPickups > -1) {
-                    console.log(getDate()+' webhook/order-create shop: '+shop+' | before saveOrderPickupPoint');
-                    await saveOrderPickupPoint(shop, orderId, pickupPoint, true);
-                    console.log(getDate()+' webhook/order-create shop: '+shop+' | after saveOrderPickupPoint');
+                    await saveOrderPickupPoint(shop, accessToken, orderId, pickupPoint, orderData, false);
                 }
             } catch (e) {
                 console.log('Error: '+e)
             }
         }
 
-        console.log(getDate()+' webhook/order-create shop: '+shop+' | before getIntegrationData');
-        const integrationData = await getIntegrationData(shop);
-        console.log(getDate()+' webhook/order-create shop: '+shop+' | after getIntegrationData');
+        const integrationData = await getIntegrationData(shop, accessToken);
         if (integrationData['error']) {
             throw new Error(integrationData['message']);
         }
@@ -649,23 +637,30 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
 
         if(isPickups === -1){
             try {
-                console.log(getDate()+' webhook/order-create shop: '+shop+' | before auto-send-to-ups');
-                await fetch(`${HOST}api/send-to-ups?shop=${shop}&id=${orderId}&automatic=true`, {
+                fetch(`${HOST}api/send-to-ups?shop=${shop}&id=${orderId}&automatic=true`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json'
                     }
+                })
+                .then(response => response.json())
+                .then(data => {
+
+                })
+                .catch(error => {
+                    throw new Error(error);
                 });
-                console.log(getDate()+' webhook/order-create shop: '+shop+' | after auto-send-to-ups');
             } catch (e) {
                 throw new Error(e);
             }
         }
+
     } catch (e){
         console.log(`${errorPrefix} ${e}`);
     }
 
+    console.timeEnd('webhook/order-create shop: '+shop);
     ctx.statusCode = 200;
     ctx.body = 'done';
 });

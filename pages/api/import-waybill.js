@@ -1,140 +1,7 @@
 const { HOST } = process.env;
-const { validatePhoneNumber, getReference2Field, updatedMetafields, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
+const { updatedMetafields, getAccessToken, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate, getOrderPickupsData, saveOrderTagError, saveWayBillNumberOnOrder, fullfillOrderItems, isFulfillOrderItemsEnabled, isFulfillOrderItemsCustomerNotify } = require('../../server/helper');
 
-async function getOrderPickupsData(shop, orderId){
-    const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 'shop': shop, 'orderId': orderId })
-    });
-
-    const getWaybillNumberJson = await getWaybillNumberResponse.json();
-
-    let orderSentToUps = false;
-    let orderLeadId = '';
-    let orderWeight = '';
-    getWaybillNumberJson.metafields.forEach((item) => {
-        if(item.key === 'pickups_point_wb'){
-            orderSentToUps = true;
-        }
-        if(item.key === 'pickups_point_lead_id'){
-            orderLeadId = item.value
-        }
-
-        if(item.key === 'pickups_point_order_weight'){
-            orderWeight = item.value
-        }
-    })
-
-    return { 'orderSentToUps': orderSentToUps, 'orderLeadId': orderLeadId, 'orderWeight': orderWeight};
-}
-
-async function saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight){
-    const response = await fetch(`${HOST}api/save-order-waybill-number`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'orderTags': orderTags, 'orderWeight': orderWeight})
-    });
-
-    return await response.json();
-}
-
-async function fullfillOrderItems(shop, orderId, wayBillNumber, customerNotify){
-    const response = await fetch(`${HOST}api/fullfill-order-items`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'customerNotify': customerNotify})
-    });
-
-    return await response.json();
-}
-
-async function saveOrderTagError(shop, orderId, orderTags, error){
-    if(orderTags.includes(error)){
-        return true;
-    }
-    const response = await fetch(`${HOST}api/save-order-tags-error`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'orderError': `UPS Error: ${error}`, 'orderTags': orderTags})
-    });
-
-    return await response.json();
-}
-
-function getHouseNumber(streetAddress){
-    const houseNumber = streetAddress.match(/[0-9]+/g);
-    if(houseNumber !== null){
-        return houseNumber[0];
-    }
-    return '';
-}
-
-function isValidPhoneNumber(phoneNumber){
-    if(!phoneNumber) return false;
-    return !!validatePhoneNumber(phoneNumber);
-}
-
-function splitPhonePrefix(phoneNumber){
-    const validatedNumber = phoneNumber.replace('+972','0').replace(/-/g, '');
-    const split = validatedNumber.match(/^0(5[^7]|[2-4]|[8-9]|7[0-9])[0-9]{7}$/);
-    const prefix = '0'+split[1];
-
-    return {
-        'prefix': prefix,
-        'number': validatedNumber.replace(prefix, '')
-    }
-}
-
-function getPickupPoint(data){
-    const pickupPoint = data.orderPickupPoint;
-    let id = null;
-    let title = null;
-
-    if(pickupPoint !== null){
-        id = pickupPoint.iid;
-        title = pickupPoint.title;
-    }
-
-    return {
-        'id': id,
-        'title': title
-    }
-}
-
-function getOrderWeight(integrationData, orderItems){
-    const defaultWeight = 1;
-
-    const orderWeightType = getFieldFromIntegrationData(integrationData,'upsIntegrationOrderWeight');
-    if(orderWeightType === 'fixed_value'){
-        const itemsTotalWeight = getFieldFromIntegrationData(integrationData,'upsIntegrationOrderWeightValue');
-        if(itemsTotalWeight > 0){
-            return itemsTotalWeight;
-        }
-        return defaultWeight;
-    }
-
-    let itemsTotalWeight = orderItems.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
-
-    if(itemsTotalWeight > 0){
-        return itemsTotalWeight/1000;
-    }
-    return defaultWeight;
-}
-
-async function restApiImportWaybillFromLeadId(accessToken, integrationData, getOrderJson, orderPickupsData){
+async function restApiImportWaybillFromLeadId(accessToken, apiAccessToken, integrationData, getOrderJson, orderPickupsData){
 
     let apiHost = getFieldFromIntegrationData(integrationData,'upsApiCreateUrl');
 
@@ -155,7 +22,7 @@ async function restApiImportWaybillFromLeadId(accessToken, integrationData, getO
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + accessToken
+            'Authorization': 'Bearer ' + apiAccessToken
         }
     };
 
@@ -186,14 +53,6 @@ async function restApiImportWaybillFromLeadId(accessToken, integrationData, getO
     return { 'wayBillNumber': trackingNumber };
 }
 
-function isFulfillOrderItemsEnabled(integrationData){
-    return getFieldFromIntegrationData(integrationData,'fulfillOrderItems') === 'true';
-}
-
-function isFulfillOrderItemsCustomerNotify(integrationData){
-    return getFieldFromIntegrationData(integrationData,'fulfillOrderItemsNotify') === 'true';
-}
-
 export default async (req, res) => {
     const shop = req.query.shop;
     const hmac = req.query.hmac;
@@ -209,7 +68,9 @@ export default async (req, res) => {
 
     if(output === '') {
 
-        await updatedMetafields(shop);
+        const accessToken = await getAccessToken(shop);
+
+        await updatedMetafields(shop, accessToken);
 
         if (Array.isArray(orderIds) === false) {
             orderIds = [orderIds];
@@ -221,7 +82,7 @@ export default async (req, res) => {
             if (output !== '') {
                 output += '<br />';
             }
-            const getOrderJson = await getOrderData(shop, orderId);
+            const getOrderJson = await getOrderData(shop, accessToken, orderId);
             if (getOrderJson.errors) {
                 output += `${getOrderJson.errors}`;
                 continue;
@@ -231,7 +92,7 @@ export default async (req, res) => {
             const orderTags = getOrderJson.order.tags;
             const errorsPrefix = `Cant import waybill for order ${orderName} - `;
 
-            const orderPickupsData = await getOrderPickupsData(shop, orderId);
+            const orderPickupsData = await getOrderPickupsData(shop, accessToken, orderId);
             if (orderPickupsData.orderSentToUps) {
                 output += `Order ${orderName} Already Sent to Ups`;
                 continue;
@@ -242,30 +103,30 @@ export default async (req, res) => {
                 continue;
             }
 
-            const integrationData = await getIntegrationData(shop);
+            const integrationData = await getIntegrationData(shop, accessToken);
             if(integrationData['error']){
                 output += `${errorsPrefix} ${integrationData['message']}`;
                 continue;
             }
             if (!orderIntegrationIsEnabled(integrationData)) {
                 const error = 'Order Integration setting is Disabled';
-                await saveOrderTagError(shop, orderId, orderTags, error);
+                await saveOrderTagError(shop, accessToken, orderId, orderTags, error);
                 output += `${errorsPrefix} ${error}`;
                 continue;
             }
 
-            const { isLoggedIn, accessToken } = await getRestApiAccessToken(integrationData ,'create');
+            const { isLoggedIn, apiAccessToken } = await getRestApiAccessToken(integrationData ,'create');
             if (!isLoggedIn) {
                 const error = 'Rest API Auth Error';
-                await saveOrderTagError(shop, orderId, orderTags, error);
+                await saveOrderTagError(shop, accessToken, orderId, orderTags, error);
                 output += `${errorsPrefix} ${error}`;
                 continue;
             }
-            const upsData = await restApiImportWaybillFromLeadId(accessToken, integrationData, getOrderJson, orderPickupsData);
+            const upsData = await restApiImportWaybillFromLeadId(accessToken, apiAccessToken, integrationData, getOrderJson, orderPickupsData);
 
             if (upsData.errors) {
                 console.log('upsData.errors', upsData.errors);
-                await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
+                await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
                 output += `${errorsPrefix} ${upsData.errors}`;
                 continue;
             }
@@ -273,9 +134,9 @@ export default async (req, res) => {
             const wayBillNumber = upsData.wayBillNumber;
             const orderWeight = orderPickupsData.orderWeight;
 
-            const response = await saveWayBillNumberOnOrder(shop, orderId, wayBillNumber, orderTags, orderWeight);
+            const response = await saveWayBillNumberOnOrder(shop, accessToken, orderId, wayBillNumber, orderTags, orderWeight);
             if (response.errors) {
-                await saveOrderTagError(shop, orderId, orderTags, upsData.errors);
+                await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
                 output += `${errorsPrefix} ${response.errors}`;
                 continue;
             }
@@ -283,7 +144,7 @@ export default async (req, res) => {
             output += `Order ${orderName} Sent to UPS `;
 
             if(isFulfillOrderItemsEnabled(integrationData)) {
-                const fulfillResponse = await fullfillOrderItems(shop, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
+                const fulfillResponse = await fullfillOrderItems(shop, accessToken, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
                 if (fulfillResponse.errors) {
                     output += `<br /> ${fulfillResponse.errors}`;
                 }

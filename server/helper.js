@@ -30,14 +30,14 @@ function isPickUpsShippingMethod(shippingMethod){
     return shippingMethod.includes('Access Points UPS') || shippingMethod.includes('UPS PickUp') || shippingMethod.includes('pickups_')
 }
 
-async function getShippingData(shop, checkAuth = false){
+async function getShippingData(shop, accessToken, checkAuth = false){
     const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop, 'isPrivate': true, 'checkAuthInformation': checkAuth})
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'isPrivate': true, 'checkAuthInformation': checkAuth})
     });
 
     try {
@@ -52,14 +52,30 @@ async function getShippingData(shop, checkAuth = false){
     }
 }
 
-async function getProductData(shop, productId){
+async function saveOrderTagError(shop, accessToken, orderId, orderTags, error){
+    if(orderTags.includes(error)){
+        return true;
+    }
+    const response = await fetch(`${HOST}api/save-order-tags-error`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'orderError': `UPS Error: ${error}`, 'orderTags': orderTags})
+    });
+
+    return await response.json();
+}
+
+async function getProductData(shop, accessToken, productId){
     const productDataResponse = await fetch(`${HOST}api/get-product-data`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop, 'productId': productId})
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'productId': productId})
     });
 
     try {
@@ -70,9 +86,9 @@ async function getProductData(shop, productId){
     }
 }
 
-async function getIntegrationData(shop){
+async function getIntegrationData(shop, accessToken){
     try {
-        const shippingDataJson = await getShippingData(shop);
+        const shippingDataJson = await getShippingData(shop, accessToken);
         if(shippingDataJson['error']){
             throw new Error(shippingDataJson['statusMessage'])
         }
@@ -83,14 +99,14 @@ async function getIntegrationData(shop){
     }
 }
 
-async function getOrderData(shop, orderId){
+async function getOrderData(shop, accessToken, orderId){
     const getOrderResponse = await fetch(`${HOST}api/get-order`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 'shop': shop, 'orderId': orderId })
+        body: JSON.stringify({ 'shop': shop, 'orderId': orderId, 'accessToken': accessToken })
     });
     if(getOrderResponse.status !== 200){
         return {'errors': `${getOrderResponse.status} - ${getOrderResponse.statusText}`}
@@ -103,14 +119,14 @@ async function getOrderData(shop, orderId){
     }
 }
 
-async function saveOrderNote(shop, orderId){
+async function saveOrderNote(shop, accessToken, orderId){
     const saveOrderNoteResponse = await fetch(`${HOST}api/save-order-note`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 'shop': shop, 'orderId': orderId })
+        body: JSON.stringify({ 'shop': shop, 'accessToken': accessToken, 'orderId': orderId })
     });
     if(saveOrderNoteResponse.status !== 200){
         return {'errors': `${saveOrderNoteResponse.status} - ${saveOrderNoteResponse.statusText}`}
@@ -123,7 +139,7 @@ async function saveOrderNote(shop, orderId){
     }
 }
 
-async function saveOrderPickupPoint(shop, orderId, pickupPoint, autoSend = false){
+async function saveOrderPickupPoint(shop, accessToken, orderId, pickupPoint, orderData = false, autoSend = false){
 
     const saveOrderPickupPointResponse = await fetch(`${HOST}api/save-order-pickup-point`, {
         method: 'POST',
@@ -131,7 +147,7 @@ async function saveOrderPickupPoint(shop, orderId, pickupPoint, autoSend = false
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'pickupPoint': pickupPoint, 'autoSend': autoSend})
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'pickupPoint': pickupPoint, 'autoSend': autoSend, 'orderData': orderData})
     });
 
     if(saveOrderPickupPointResponse.status !== 200){
@@ -145,8 +161,8 @@ async function saveOrderPickupPoint(shop, orderId, pickupPoint, autoSend = false
     }
 }
 
-async function autoSendToUps(shop, orderId){
-    const integrationData = await getIntegrationData(shop);
+async function autoSendToUps(shop, accessToken, orderId){
+    const integrationData = await getIntegrationData(shop, accessToken);
 
     if (!integrationData['error'] && orderIntegrationIsEnabled(integrationData) && orderAutomaticSendIsEnabled(integrationData)) {
         try {
@@ -214,20 +230,20 @@ async function getRestApiAccessToken(integrationData, type){
             throw data['error'] +' - '+data['error_description'];
         }
 
-        const accessToken = data['access_token'];
+        const apiAccessToken = data['access_token'];
 
         return {
-            'isLoggedIn': !!accessToken,
-            'accessToken': accessToken
+            'isLoggedIn': !!apiAccessToken,
+            'apiAccessToken': apiAccessToken
         }
     } catch (e) {
         console.log(getDate()+' getRestApiAccessToken Error: ',e);
-        return {'isLoggedIn': false, 'accessToken': false };
+        return {'isLoggedIn': false, 'apiAccessToken': false };
     }
 }
 
 async function getCustomerTypeApi(integrationData){
-    const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData, 'create');
+    const {isLoggedIn, apiAccessToken} = await getRestApiAccessToken(integrationData, 'create');
     if (!isLoggedIn) {
         return { 'errors': 'Auth Error' }
     }
@@ -238,7 +254,7 @@ async function getCustomerTypeApi(integrationData){
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + accessToken
+            'Authorization': 'Bearer ' + apiAccessToken
         }
     };
 
@@ -264,7 +280,7 @@ async function getCustomerTypeApi(integrationData){
     }
 }
 
-async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, format){
+async function restApiPrintLabel(accessToken, apiAccessToken, integrationData, wayBillNumber, format){
     const apiUrl = getFieldFromIntegrationData(integrationData,'upsApiUrl') + 'api/v1/shipments/PrintWBOrderDetails';
     const functionArgs = {
         'trackingNumbers': wayBillNumber,
@@ -278,7 +294,7 @@ async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, fo
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + accessToken
+            'Authorization': 'Bearer ' + apiAccessToken
         }
     };
 
@@ -302,14 +318,14 @@ async function restApiPrintLabel(accessToken, integrationData, wayBillNumber, fo
     }
 }
 
-async function getOrderAdditionalInfo(shop, orderId){
+async function getOrderAdditionalInfo(shop, accessToken, orderId){
     const getOrderMetafieldsResponse = await fetch(`${HOST}api/get-waybill-number`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 'shop': shop, 'orderId': orderId })
+        body: JSON.stringify({ 'shop': shop, 'accessToken': accessToken, 'orderId': orderId })
     });
 
     const getOrderMetafieldsJson = await getOrderMetafieldsResponse.json();
@@ -517,27 +533,66 @@ async function sendOrderToUps(shop){
     }
 }
 
-async function saveOrderWeight(shop, orderId, orderWeight){
+async function saveOrderWeight(shop, accessToken, orderId, orderWeight){
     const response = await fetch(`${HOST}api/save-order-weight`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop, 'orderId': orderId, 'orderWeight': orderWeight})
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'orderWeight': orderWeight})
     });
 
     return await response.json();
 }
 
-async function updatedMetafields(shop){
+async function saveWayBillNumberOnOrder(shop, accessToken, orderId, wayBillNumber, orderTags, orderWeight, additionalTags = null){
+    const response = await fetch(`${HOST}api/save-order-waybill-number`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'orderTags': orderTags, 'orderWeight': orderWeight, 'additionalTags': additionalTags})
+    });
+
+    return await response.json();
+}
+
+async function fullfillOrderItems(shop, accessToken, orderId, wayBillNumber, customerNotify){
+    const response = await fetch(`${HOST}api/fullfill-order-items`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'wayBillNumber': wayBillNumber, 'customerNotify': customerNotify})
+    });
+
+    return await response.json();
+}
+
+async function saveLeadIdOnOrder(shop, accessToken, orderId, leadId, orderTags, orderWeight){
+    const response = await fetch(`${HOST}api/save-order-leadid`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'leadId': leadId, 'orderTags': orderTags})
+    });
+
+    return await response.json();
+}
+
+async function updatedMetafields(shop, accessToken){
     await fetch(`${HOST}api/set-shipping-data`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop })
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken })
     });
 }
 
@@ -547,7 +602,7 @@ async function getClosestPoints(shop, shippingData, customerShippingAddress, poi
     const apiHost = getFieldFromIntegrationData(integrationData,'upsApiUrl');
     const apiUrl = apiHost + 'api/v1/pickups/getclosestpoints';
 
-    const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData, 'print');
+    const {isLoggedIn, apiAccessToken} = await getRestApiAccessToken(integrationData, 'print');
     if (!isLoggedIn) {
         return { 'errors': 'Auth Error' }
     }
@@ -582,7 +637,7 @@ async function getClosestPoints(shop, shippingData, customerShippingAddress, poi
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + accessToken
+                'Authorization': 'Bearer ' + apiAccessToken
             }
         });
         const data = await getClosestPointsResponse.json();
@@ -738,6 +793,60 @@ async function writeLogToSeq(message){
     return false;
 }
 
+async function getOrderPickupsData(shop, accessToken, orderId){
+    const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 'shop': shop, 'orderId': orderId, 'accessToken': accessToken })
+    });
+
+    const getWaybillNumberJson = await getWaybillNumberResponse.json();
+
+    let orderSentToUps = false;
+    let orderPickupPoint = '';
+    let orderLeadId = '';
+    let orderWeight = '';
+    getWaybillNumberJson.metafields.forEach((item) => {
+        if(item.key === 'pickups_point_wb'){
+            orderSentToUps = true;
+        }
+        if(item.key === 'pickups_point_lead_id'){
+            orderLeadId = item.value
+        }
+        if(item.key === 'pickups_point_json'){
+            orderPickupPoint = JSON.parse(item.value)
+        }
+        if(item.key === 'pickups_point_order_weight'){
+            orderWeight = item.value
+        }
+    })
+
+    return { 'orderSentToUps': orderSentToUps, 'orderPickupPoint': orderPickupPoint, 'orderLeadId': orderLeadId, 'orderWeight': orderWeight};
+}
+
+function getOrderWeight(integrationData, orderItems){
+    const defaultWeight = 1;
+
+    const orderWeightType = getFieldFromIntegrationData(integrationData,'upsIntegrationOrderWeight');
+    if(orderWeightType === 'fixed_value'){
+        const itemsTotalWeight = getFieldFromIntegrationData(integrationData,'upsIntegrationOrderWeightValue');
+        if(itemsTotalWeight > 0){
+            return itemsTotalWeight;
+        }
+        return defaultWeight;
+    }
+
+    let itemsTotalWeight = orderItems.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
+
+    if(itemsTotalWeight > 0){
+        return itemsTotalWeight/1000;
+    }
+    return defaultWeight;
+}
+
 function timePad(number) {
     if ( number < 10 ) {
         return '0' + number;
@@ -835,6 +944,14 @@ function getNumberOfPackages(additionalInformation, customerType){
     return numOfPackages || 1;
 }
 
+function isFulfillOrderItemsEnabled(integrationData){
+    return getFieldFromIntegrationData(integrationData,'fulfillOrderItems') === 'true';
+}
+
+function isFulfillOrderItemsCustomerNotify(integrationData){
+    return getFieldFromIntegrationData(integrationData,'fulfillOrderItemsNotify') === 'true';
+}
+
 module.exports = {
     getShopifyRequestHeaders,
     getIntegrationData,
@@ -870,5 +987,13 @@ module.exports = {
     getOrderCustomerName,
     validatePhoneNumber,
     getOrderAdditionalInfo,
-    getNumberOfPackages
+    getNumberOfPackages,
+    getOrderPickupsData,
+    saveOrderTagError,
+    getOrderWeight,
+    saveWayBillNumberOnOrder,
+    fullfillOrderItems,
+    saveLeadIdOnOrder,
+    isFulfillOrderItemsCustomerNotify,
+    isFulfillOrderItemsEnabled
 }

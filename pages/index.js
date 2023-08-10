@@ -17,7 +17,7 @@ import {
     Icon,
     Spinner
 } from '@shopify/polaris';
-import { CircleTickMajor } from "@shopify/polaris-icons";
+import { CircleTickMajor, CircleInformationMajor } from "@shopify/polaris-icons";
 import React, { Component } from 'react';
 
 class Index extends Component {
@@ -167,6 +167,15 @@ class Index extends Component {
         return (
             <Page>
                 <Layout>
+                    <Layout.AnnotatedSection title="">
+                        <Card sectioned>
+                            <a href="https://apps.shopify.com/pickup-integration" target="_blank" style={{textDecoration: 'none'}}>
+                                <div style={{display: 'flex', direction: 'rtl'}}>
+                                    <Icon color="interactive" source={CircleInformationMajor} /><span style={{flexGrow: '1', marginRight: '10px'}}>לחצו כאן כדי לדרג אותנו בחנות האפליקציות, זה ממש יעזור!</span>
+                                </div>
+                            </a>
+                        </Card>
+                    </Layout.AnnotatedSection>
                     <Layout.AnnotatedSection title="Pick Up Settings">
                         <Card sectioned>
                             <Select

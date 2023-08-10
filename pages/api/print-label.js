@@ -1,14 +1,14 @@
 const { HOST } = process.env;
-const { sleep, updatedMetafields, mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
+const { sleep, updatedMetafields, getAccessToken, mergePdf, restApiPrintLabel, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate } = require('../../server/helper');
 
-async function getWayBillNumber(shop, orderId){
+async function getWayBillNumber(shop, accessToken, orderId){
     const getWaybillNumberResponse = await fetch(`${HOST}api/get-waybill-number`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 'shop': shop, 'orderId': orderId })
+        body: JSON.stringify({ 'shop': shop, 'accessToken': accessToken, 'orderId': orderId })
     });
 
     if(getWaybillNumberResponse.status !== 200){
@@ -48,7 +48,9 @@ export default async (req, res) => {
 
     if(output === '') {
 
-        await updatedMetafields(shop);
+        const accessToken = await getAccessToken(shop);
+
+        await updatedMetafields(shop, accessToken);
 
         if (Array.isArray(orderIds) === false) {
             orderIds = [orderIds];
@@ -63,7 +65,7 @@ export default async (req, res) => {
                 output += '<br />';
             }
 
-            const getOrderJson = await getOrderData(shop, orderId);
+            const getOrderJson = await getOrderData(shop, accessToken, orderId);
 
             if (getOrderJson.errors) {
                 output += `${getOrderJson.errors}`;
@@ -74,14 +76,14 @@ export default async (req, res) => {
 
             const errorsPrefix = `Cant print order ${orderName} - `;
 
-            const wayBillNumber = await getWayBillNumber(shop, orderId);
+            const wayBillNumber = await getWayBillNumber(shop, accessToken, orderId);
 
             if (!wayBillNumber) {
                 output += `${errorsPrefix} WaybillNumber Not Found`;
                 continue;
             }
 
-            const integrationData = await getIntegrationData(shop);
+            const integrationData = await getIntegrationData(shop, accessToken);
             if(integrationData['error']){
                 output += `${errorsPrefix} ${integrationData['message']}`;
                 continue;
@@ -91,12 +93,12 @@ export default async (req, res) => {
                 continue;
             }
 
-            const {isLoggedIn, accessToken} = await getRestApiAccessToken(integrationData, 'print');
+            const {isLoggedIn, apiAccessToken} = await getRestApiAccessToken(integrationData, 'print');
             if (!isLoggedIn) {
                 output += `${errorsPrefix} REST API Auth Error`;
                 continue;
             }
-            const upsData = await restApiPrintLabel(accessToken, integrationData, wayBillNumber, format);
+            const upsData = await restApiPrintLabel(accessToken, apiAccessToken, integrationData, wayBillNumber, format);
 
             if (upsData.errors) {
                 output += `${errorsPrefix} ${upsData.errors}`;
@@ -105,7 +107,9 @@ export default async (req, res) => {
 
             pdfList.push(upsData.response);
 
-            await sleep();
+            if(orderIdsLength-1 > i) {
+                await sleep();
+            }
         }
 
         if (pdfList.length > 0) {
