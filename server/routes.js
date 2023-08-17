@@ -635,25 +635,23 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
             throw new Error(`Order Automatic Send is Disabled`);
         }
 
-        if(isPickups === -1){
-            try {
-                fetch(`${HOST}api/send-to-ups?shop=${shop}&id=${orderId}&automatic=true`, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
+        try {
+            fetch(`${HOST}api/send-to-ups?shop=${shop}&id=${orderId}&automatic=true`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
 
-                })
-                .catch(error => {
-                    throw new Error(error);
-                });
-            } catch (e) {
-                throw new Error(e);
-            }
+            })
+            .catch(error => {
+                throw new Error(error);
+            });
+        } catch (e) {
+            throw new Error(e);
         }
 
     } catch (e){

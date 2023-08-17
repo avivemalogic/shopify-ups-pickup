@@ -322,7 +322,7 @@ export default async (req, res) => {
                         continue;
                     }
 
-                    const upsPrintLabel = await restApiPrintLabel(apiAccessToken, integrationData, wayBillNumber, format);
+                    const upsPrintLabel = await restApiPrintLabel(accessToken, apiAccessToken, integrationData, wayBillNumber, format);
 
                     if (upsPrintLabel.errors) {
                         output += `${errorsPrefix} ${upsPrintLabel.errors}`;

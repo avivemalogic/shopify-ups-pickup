@@ -647,6 +647,7 @@ async function getClosestPoints(shop, shippingData, customerShippingAddress, poi
         }
 
         if(data['IsSuccessful'] !== true){
+            console.log('getClosestPoints Request Params', functionArgs);
             console.log('getClosestPoints Error', data);
             throw data['ErrorMSG'] || 'Unknown Error';
         }
