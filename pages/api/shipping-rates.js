@@ -24,9 +24,18 @@ function getAvailableRates(data, serviceNamePrefix, price){
     return arr;
 }
 
+function isCartMinimumPriceForClosestPoints(shippingDataFields, itemsTotalPrice){
+    const closestPointsMinimumEnabled = shippingDataFields.find((item) => item.key === 'closestPointsMinimumEnabled').value;
+    let closestPointsMinimumPrice = shippingDataFields.find((item) => item.key === 'closestPointsMinimum').value;
+    if(closestPointsMinimumPrice > 0){
+        closestPointsMinimumPrice *= 100;
+    }
+
+    return !(closestPointsMinimumEnabled === 'true' && closestPointsMinimumPrice > 0 && itemsTotalPrice < closestPointsMinimumPrice);
+}
+
 export default async (req, res) => {
     const shop = req.headers['x-shopify-shop-domain'];
-    console.log(getDate()+' shipping-rates shop: '+shop+' | init');
     const customerShippingAddress = req.body.rate.destination;
 
     res.statusCode = 200;
@@ -53,7 +62,9 @@ export default async (req, res) => {
     const itemsTotalPrice = cartItems.reduce( ( sum, { price, quantity } ) => sum + (price * quantity) , 0);
     const itemsTotalWeightGrams = cartItems.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
 
-    if(isEnabled !== 'true' || !methodPrice || methodPrice === 'X') {
+    console.log(isCartMinimumPriceForClosestPoints(shippingDataFields, itemsTotalPrice));
+
+    if(isEnabled !== 'true' || !methodPrice || methodPrice === 'X' || !isCartMinimumPriceForClosestPoints(shippingDataFields, itemsTotalPrice)) {
         return res.end('Closest Points is Disabled');
     }
 

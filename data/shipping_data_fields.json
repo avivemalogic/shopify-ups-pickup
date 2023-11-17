@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.1.4",
+    "value": "1.1.9",
     "type": "string"
   },
   {
@@ -159,6 +159,18 @@
     "namespace": "pickups-closest",
     "key": "productFreeShippingEnabled",
     "value": "false",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsMinimumEnabled",
+    "value": "false",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-closest",
+    "key": "closestPointsMinimum",
+    "value": "X",
     "type": "string"
   }
 ]

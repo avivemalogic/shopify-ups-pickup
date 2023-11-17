@@ -56,6 +56,8 @@ class Index extends Component {
             'closestPointsNumber': {},
             'closestPointsAccuracy': {},
             'closestPointsTitle': {},
+            'closestPointsMinimumEnabled': {},
+            'closestPointsMinimum': {},
             'isAuthValid': false,
             'customerType': null
         };
@@ -290,6 +292,27 @@ class Index extends Component {
                                     enabled={state.productFreeShippingEnabled.value} >
                                     Products Free Shipping Tag is <TextStyle variation="strong">{state.productFreeShippingEnabled.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
                                 </SettingToggle>
+                                <SettingToggle
+                                    action={{
+                                        content: state.closestPointsMinimumEnabled.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                        onAction: () => { this.handleToggle('closestPointsMinimumEnabled') },
+                                    }}
+                                    enabled={state.closestPointsMinimumEnabled.value} >
+                                    Minimum Cart Price is <TextStyle variation="strong">{state.closestPointsMinimumEnabled.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                                </SettingToggle>
+                                {state.closestPointsMinimumEnabled.value === 'true' &&
+                                <div style={{margin: '2rem 0 0'}}>
+                                    <Card sectioned>
+                                        <TextField
+                                            value={state.closestPointsMinimum.value}
+                                            onChange={this.handleChange('closestPointsMinimum', 'number')}
+                                            label="Minimum Cart Price"
+                                            type="number"
+                                            error={state.closestPointsMinimum.value === 'X'}
+                                        />
+                                    </Card>
+                                </div>
+                                }
                             </div>
                         }
                     </Layout.AnnotatedSection>

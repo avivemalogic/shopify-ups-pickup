@@ -44,7 +44,7 @@ app.prepare().then(() => {
 
     server.use(serve('./public'));
 
-    router.all(/^\/ups-labels\/(.*)$/, async (ctx, next) => {
+    router.get(/^\/ups-labels\/(.*)$/, async (ctx, next) => {
         if (ENV === 'production' || ENV === 'staging') {
             const filePath = path.join(sharedFilesDir, ctx.params[0]);
             await send(ctx, filePath, { root: '/' });
