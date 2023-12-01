@@ -1,4 +1,4 @@
-const { getOrderAdditionalInfo, getNumberOfPackages, validatePhoneNumber, getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate, getAccessToken, getOrderPickupsData, saveOrderTagError, getOrderWeight, saveWayBillNumberOnOrder, saveLeadIdOnOrder, fullfillOrderItems, isFulfillOrderItemsEnabled, isFulfillOrderItemsCustomerNotify } = require('../../server/helper');
+const { isShippingMethodAllowCreateWaybill, getOrderAdditionalInfo, getNumberOfPackages, validatePhoneNumber, getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate, getAccessToken, getOrderPickupsData, saveOrderTagError, getOrderWeight, saveWayBillNumberOnOrder, saveLeadIdOnOrder, fullfillOrderItems, isFulfillOrderItemsEnabled, isFulfillOrderItemsCustomerNotify } = require('../../server/helper');
 
 function getHouseNumber(streetAddress){
     const houseNumber = streetAddress.match(/[0-9]+/g);
@@ -52,6 +52,13 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
     const itemsTotalWeight = getOrderWeight(integrationData, getOrderJson.order.line_items);
 
     const isPickups = isPickUpsShippingMethod(shippingMethod);
+
+    if(!isShippingMethodAllowCreateWaybill(shippingMethod, integrationData)){
+        return {
+            'errors': 'This shipping method is not allowed to create waybill'
+        }
+    }
+
     const reference2Type = getFieldFromIntegrationData(integrationData,'upsIntegrationReference2');
     const reference2 = getReference2Field(reference2Type, getOrderJson.order, orderPickupsData, shippingData).substring(0, 36);
     const shipmentInstructions = streetAddress;

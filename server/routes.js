@@ -132,6 +132,43 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
     ctx.statusCode = 200;
 });
 
+router.post('/api/get-shipping-methods', bodyParser(), async (ctx, next) => {
+    const data = ctx.request.body;
+    const shop = data.shop;
+    const isPrivate = data.isPrivate;
+    const accessToken = data.accessToken || await getAccessToken(shop);
+
+    const requestOptions = {
+        method: 'GET',
+        headers: getShopifyRequestHeaders(accessToken)
+    };
+
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/shipping_zones.json`;
+    const response = await fetch(apiUrl, requestOptions);
+    const dataJson = await getResponseJsonAndSaveLogs('get-shipping-methods', shop, apiUrl, requestOptions ,response);
+
+    let shippingNames = [];
+    try {
+        const shippingZone = dataJson.shipping_zones;
+        const shippingNamesDeque = [];
+        for (let i = 0; i < shippingZone.length; i++) {
+            const rate = shippingZone[i]['price_based_shipping_rates'];
+            for (let j = 0; j < rate.length; j++) {
+                const rateName = rate[j]['name'];
+                if(!shippingNamesDeque.includes(rateName) && !isPickUpsShippingMethod(rateName)) {
+                    shippingNamesDeque.push(rateName);
+                    shippingNames.push({'value': rateName, 'label': rateName});
+                }
+            }
+        }
+    } catch(e){
+
+    }
+
+    ctx.body = shippingNames;
+    ctx.statusCode = 200;
+});
+
 router.post('/api/get-product-data', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;

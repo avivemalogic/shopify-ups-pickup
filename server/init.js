@@ -2,7 +2,7 @@ require("dotenv").config();
 const { HOST, API_VERSION } = process.env;
 const { getShopifyRequestHeaders, getResponseJsonAndSaveLogs, getDate } = require('./helper');
 const shippingDataFieldsObject = require('../data/shipping_data_fields.json')
-const PLUGIN_FIELDS_VERSION = "1.2.1";
+const PLUGIN_FIELDS_VERSION = "1.2.2";
 
 /**
  * Add Shipping Method Options

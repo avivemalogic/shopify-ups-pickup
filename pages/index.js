@@ -6,6 +6,7 @@ import {
     FormLayout,
     Layout,
     Page,
+    OptionList,
     Select,
     SettingToggle,
     Stack,
@@ -18,6 +19,7 @@ import {
     Spinner
 } from '@shopify/polaris';
 import { CircleTickMajor, CircleInformationMajor } from "@shopify/polaris-icons";
+import AllowedShippingMethods from "../src/components/settings/AllowedShippingMethods";
 import React, { Component } from 'react';
 
 class Index extends Component {
@@ -59,6 +61,8 @@ class Index extends Component {
             'closestPointsTitle': {},
             'closestPointsMinimumEnabled': {},
             'closestPointsMinimum': {},
+            'shippingMethods': [],
+            'shippingMethodSelected': {},
             'isAuthValid': false,
             'customerType': null
         };
@@ -118,7 +122,6 @@ class Index extends Component {
         }
 
         this.checkAuthInformation(shop).then(() => {
-            console.log('checkAuthInformation done');
             this.setState({'isLoading': false})
         });
     }
@@ -360,6 +363,8 @@ class Index extends Component {
                                 </SettingToggle>
                             </div>
 
+                            <AllowedShippingMethods shop={state.shop} shippingMethodSelected={state.shippingMethodSelected.value !== 'X' ? state.shippingMethodSelected.value : ''} onChange={this.handleChange('shippingMethodSelected','multiselect')} />
+
                             <Card sectioned>
                                 <TextField
                                     value={state.upsApiCreateUrl.value === 'X' ? '' : state.upsApiCreateUrl.value}
@@ -560,6 +565,9 @@ class Index extends Component {
                 if(val < 0) {
                     return;
                 }
+            }
+            if(type === 'multiselect'){
+                val = val.join(',');
             }
             const newObject = this.state[field];
             newObject.value = val ? val : 'X';

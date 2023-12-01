@@ -34,6 +34,27 @@ function isPickUpsShippingMethod(shippingMethod){
     return shippingMethod.includes('Access Points UPS') || shippingMethod.includes('UPS PickUp') || shippingMethod.includes('pickups_')
 }
 
+function getAllowedShippingMethods(integrationData){
+    try {
+        const shippingMethods = getFieldFromIntegrationData(integrationData, 'shippingMethodSelected')
+        return shippingMethods.split(',');
+    } catch(e){
+        return [];
+    }
+}
+
+function isShippingMethodAllowCreateWaybill(shippingMethod, integrationData){
+    try {
+        if(isPickUpsShippingMethod(shippingMethod)){
+            return true;
+        }
+        const allowedMethods = getAllowedShippingMethods(integrationData);
+        return allowedMethods.includes(shippingMethod);
+    } catch(e){
+        return false;
+    }
+}
+
 async function getShippingData(shop, accessToken, checkAuth = false){
     const shippingDataResponse = await fetch(`${HOST}api/get-shipping-data`, {
         method: 'POST',
@@ -1020,5 +1041,6 @@ module.exports = {
     saveLeadIdOnOrder,
     isFulfillOrderItemsCustomerNotify,
     isFulfillOrderItemsEnabled,
-    isGetWaybillStatusEnabled
+    isGetWaybillStatusEnabled,
+    isShippingMethodAllowCreateWaybill
 }
