@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.1.9",
+    "value": "1.2.0",
     "type": "string"
   },
   {
@@ -152,6 +152,12 @@
   {
     "namespace": "pickups-integration",
     "key": "orderIntegrationClosestPoints",
+    "value": "false",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "enableGetWaybillStatus",
     "value": "false",
     "type": "string"
   },

@@ -62,8 +62,6 @@ export default async (req, res) => {
     const itemsTotalPrice = cartItems.reduce( ( sum, { price, quantity } ) => sum + (price * quantity) , 0);
     const itemsTotalWeightGrams = cartItems.reduce( ( sum, { grams, quantity } ) => sum + (grams * quantity) , 0);
 
-    console.log(isCartMinimumPriceForClosestPoints(shippingDataFields, itemsTotalPrice));
-
     if(isEnabled !== 'true' || !methodPrice || methodPrice === 'X' || !isCartMinimumPriceForClosestPoints(shippingDataFields, itemsTotalPrice)) {
         return res.end('Closest Points is Disabled');
     }

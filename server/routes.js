@@ -309,7 +309,7 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
             "order":
                 {
                     "id": orderId,
-                    "tags": `${orderTags}, Sent To UPS, ${wayBillNumber}, ${orderWeight}${additionalTags}`
+                    "tags": `${orderTags ? orderTags+',' : ''} Sent To UPS, ${wayBillNumber}, ${orderWeight}${additionalTags}`
                 }
         })
     };

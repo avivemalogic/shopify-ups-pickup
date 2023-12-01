@@ -18,6 +18,10 @@ function orderIntegrationIsEnabled(integrationData){
     return !!integrationData.find((item) => item.key === 'enableOrderIntegration' && item.value === 'true')
 }
 
+function isGetWaybillStatusEnabled(integrationData){
+    return !!integrationData.find((item) => item.key === 'enableGetWaybillStatus' && item.value === 'true')
+}
+
 function orderAutomaticSendIsEnabled(integrationData){
     return !!integrationData.find((item) => item.key === 'orderIntegrationAutomatic' && item.value === 'true')
 }
@@ -50,6 +54,22 @@ async function getShippingData(shop, accessToken, checkAuth = false){
         console.log(getDate()+' getShippingData Error:', e);
         return {'error': true, 'message': 'getShippingData Error:'+e, 'statusMessage': e.message };
     }
+}
+
+async function saveOrderTag(shop, accessToken, orderId, orderTags, message){
+    if(orderTags.includes(message)){
+        return true;
+    }
+    const response = await fetch(`${HOST}api/save-order-tags-error`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'orderError': message, 'orderTags': orderTags})
+    });
+
+    return await response.json();
 }
 
 async function saveOrderTagError(shop, accessToken, orderId, orderTags, error){
@@ -810,8 +830,10 @@ async function getOrderPickupsData(shop, accessToken, orderId){
     let orderPickupPoint = '';
     let orderLeadId = '';
     let orderWeight = '';
+    let orderWaybillNumber = '';
     getWaybillNumberJson.metafields.forEach((item) => {
         if(item.key === 'pickups_point_wb'){
+            orderWaybillNumber = item.value
             orderSentToUps = true;
         }
         if(item.key === 'pickups_point_lead_id'){
@@ -825,7 +847,7 @@ async function getOrderPickupsData(shop, accessToken, orderId){
         }
     })
 
-    return { 'orderSentToUps': orderSentToUps, 'orderPickupPoint': orderPickupPoint, 'orderLeadId': orderLeadId, 'orderWeight': orderWeight};
+    return { 'orderSentToUps': orderSentToUps, 'orderPickupPoint': orderPickupPoint, 'orderLeadId': orderLeadId, 'orderWeight': orderWeight, 'orderWaybillNumber': orderWaybillNumber};
 }
 
 function getOrderWeight(integrationData, orderItems){
@@ -990,11 +1012,13 @@ module.exports = {
     getOrderAdditionalInfo,
     getNumberOfPackages,
     getOrderPickupsData,
+    saveOrderTag,
     saveOrderTagError,
     getOrderWeight,
     saveWayBillNumberOnOrder,
     fullfillOrderItems,
     saveLeadIdOnOrder,
     isFulfillOrderItemsCustomerNotify,
-    isFulfillOrderItemsEnabled
+    isFulfillOrderItemsEnabled,
+    isGetWaybillStatusEnabled
 }

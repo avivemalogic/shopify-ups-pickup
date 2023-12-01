@@ -13,6 +13,9 @@
     margin: 15px auto 25px;
     text-align: left;
 }
+.message-container .message-wrapper.right {
+    text-align: right;
+}
 .message-container button {
     position: relative;
     margin: 0;

@@ -47,6 +47,7 @@ class Index extends Component {
             'upsIntegrationOrderWeightValue': {},
             'orderIntegrationAutomatic': {},
             'orderIntegrationClosestPoints': {},
+            'enableGetWaybillStatus': {},
             'closestPointsEnabled': {},
             'productFreeShippingEnabled': {},
             'closestPointsPrice': {},
@@ -347,6 +348,15 @@ class Index extends Component {
                                     }}
                                     enabled={state.orderIntegrationClosestPoints.value} >
                                     Get Closest Point on Sent to Ups is <TextStyle variation="strong">{state.orderIntegrationClosestPoints.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                                </SettingToggle>
+
+                                <SettingToggle
+                                    action={{
+                                        content: state.enableGetWaybillStatus.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                        onAction: () => this.handleToggle('enableGetWaybillStatus'),
+                                    }}
+                                    enabled={state.enableGetWaybillStatus.value} >
+                                    Get Waybill Status is <TextStyle variation="strong">{state.enableGetWaybillStatus.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
                                 </SettingToggle>
                             </div>
 
