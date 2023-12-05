@@ -93,7 +93,6 @@ export default async (req, res) => {
             const errorsPrefix = `Cant get waybill waybill for order ${orderName} - `;
 
             const orderPickupsData = await getOrderPickupsData(shop, accessToken, orderId);
-            console.log('orderPickupsData', orderPickupsData);
             if (!orderPickupsData.orderWaybillNumber) {
                 output += `Order ${orderName} Doesnt have Waybill`;
                 continue;
@@ -118,13 +117,13 @@ export default async (req, res) => {
             }
             const upsData = await restApiGetWaybillStatus(apiAccessToken, apiAccessToken, integrationData, orderPickupsData);
 
-            if (upsData.errors) {
+            if (upsData.errors || !upsData.waybillStatus) {
                 console.log('upsData.errors', upsData.errors);
-                output += `${errorsPrefix} ${upsData.errors}`;
+                output += `${errorsPrefix} עוד אין מידע על משלוח זה, יש לנסות מאוחר יותר`;
                 continue;
             }
-
-            await saveOrderTag(shop, accessToken, orderId, orderTags, upsData.waybillStatus);
+            const waybillStatusPrefixTag = 'סטטוס משלוח:';
+            await saveOrderTag(shop, accessToken, orderId, orderTags, waybillStatusPrefixTag+upsData.waybillStatus, waybillStatusPrefixTag);
 
             output = upsData.waybillStatus;
         }

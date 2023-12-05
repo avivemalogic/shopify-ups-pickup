@@ -495,10 +495,11 @@ router.post('/api/save-order-tags-error', bodyParser(), async (ctx, next) => {
     const data = ctx.request.body;
     const shop = data.shop;
     const orderId = data.orderId;
-    const orderTags = data.orderTags.split(',').filter((item) => !item.includes('UPS Error:')).join(',');
+    const removeTagPrefix = data.removeTagPrefix;
+    const orderTags = data.orderTags.split(',').filter((item) => !item.includes('UPS Error:') && (!removeTagPrefix || !item.includes(removeTagPrefix))).join(',');
     const orderNewTagError = data.orderError;
 
-    const newTag = `${orderTags.substring(0, 40)}, ${orderNewTagError.substring(0, 40)}`;
+    const newTag = `${orderTags}, ${orderNewTagError.substring(0, 40)}`;
     const accessToken = data.accessToken || await getAccessToken(shop);
 
     const tagsRequestOptions = {

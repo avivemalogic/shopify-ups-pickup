@@ -63,6 +63,7 @@ class Index extends Component {
             'closestPointsMinimum': {},
             'shippingMethods': [],
             'shippingMethodSelected': {},
+            'enableShippingMethodSelect': {},
             'isAuthValid': false,
             'customerType': null
         };
@@ -361,9 +362,22 @@ class Index extends Component {
                                     enabled={state.enableGetWaybillStatus.value} >
                                     Get Waybill Status is <TextStyle variation="strong">{state.enableGetWaybillStatus.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
                                 </SettingToggle>
+
+                                <SettingToggle
+                                    action={{
+                                        content: state.enableShippingMethodSelect.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                        onAction: () => this.handleToggle('enableShippingMethodSelect'),
+                                    }}
+                                    enabled={state.enableShippingMethodSelect.value} >
+                                    Shipping Method Select is <TextStyle variation="strong">{state.enableShippingMethodSelect.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                                </SettingToggle>
                             </div>
 
-                            <AllowedShippingMethods shop={state.shop} shippingMethodSelected={state.shippingMethodSelected.value !== 'X' ? state.shippingMethodSelected.value : ''} onChange={this.handleChange('shippingMethodSelected','multiselect')} />
+                            {state.enableShippingMethodSelect.value === 'true' &&
+                                <AllowedShippingMethods shop={state.shop}
+                                    shippingMethodSelected={state.shippingMethodSelected.value !== 'X' ? state.shippingMethodSelected.value : ''}
+                                    onChange={this.handleChange('shippingMethodSelected', 'multiselect')}/>
+                            }
 
                             <Card sectioned>
                                 <TextField

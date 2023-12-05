@@ -48,10 +48,13 @@ function isShippingMethodAllowCreateWaybill(shippingMethod, integrationData){
         if(isPickUpsShippingMethod(shippingMethod)){
             return true;
         }
+        if(getFieldFromIntegrationData(integrationData, 'enableShippingMethodSelect') !== 'true'){
+            return true;
+        }
         const allowedMethods = getAllowedShippingMethods(integrationData);
         return allowedMethods.includes(shippingMethod);
     } catch(e){
-        return false;
+        return true;
     }
 }
 
@@ -77,7 +80,7 @@ async function getShippingData(shop, accessToken, checkAuth = false){
     }
 }
 
-async function saveOrderTag(shop, accessToken, orderId, orderTags, message){
+async function saveOrderTag(shop, accessToken, orderId, orderTags, message, removeTagPrefix = null){
     if(orderTags.includes(message)){
         return true;
     }
@@ -87,7 +90,7 @@ async function saveOrderTag(shop, accessToken, orderId, orderTags, message){
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'orderError': message, 'orderTags': orderTags})
+        body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'orderError': message, 'orderTags': orderTags, 'removeTagPrefix': removeTagPrefix})
     });
 
     return await response.json();
