@@ -90,7 +90,8 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
         'Reference1': orderId,
         'Reference2': reference2,
         'Weight': itemsTotalWeight,
-        'UseDefaultShipperAddress': 'true'
+        'UseDefaultShipperAddress': 'true',
+        'ProcessName': 11
     }
 
     let closestPointAccuracyLabel;
