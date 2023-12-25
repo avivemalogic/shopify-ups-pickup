@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {Card, OptionList} from "@shopify/polaris";
+import {Card, Icon, OptionList} from "@shopify/polaris";
+import {CircleInformationMajor} from "@shopify/polaris-icons";
 
 const AllowedShippingMethod = ({ shop, onChange, shippingMethodSelected}) => {
     const [shippingMethods, setShippingMethods] = useState([]);
@@ -40,13 +41,18 @@ const AllowedShippingMethod = ({ shop, onChange, shippingMethodSelected}) => {
         <Card sectioned>
             Allowed Shipping Methods
             {shippingMethods &&
-                <OptionList
-                    onChange={handleChange}
-                    selected={selected}
-                    label="Allowed Shipping Methods"
-                    options={shippingMethods}
-                    allowMultiple
-                />
+                <>
+                    <OptionList
+                        onChange={handleChange}
+                        selected={selected}
+                        label="Allowed Shipping Methods"
+                        options={shippingMethods}
+                        allowMultiple
+                    />
+                    <div style={{display: 'flex', direction: 'rtl'}}>
+                        <Icon color="interactive" source={CircleInformationMajor} /><span style={{flexGrow: '1', marginRight: '10px'}}>במידה ואופציה זו מוגדרת, ניתן יהיה להפיק שטר מטען רק עבור הזמנות עם סוג משלוח שמסומן, עבור סוג משלוח של נקודות חלוקה (חנות/לוקר) הגדרה זו תאופשר תמיד</span>
+                    </div>
+                </>
             }
         </Card>
     );

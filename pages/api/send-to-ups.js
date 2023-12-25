@@ -55,7 +55,8 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
 
     if(!isShippingMethodAllowCreateWaybill(shippingMethod, integrationData)){
         return {
-            'errors': 'This shipping method is not allowed to create waybill'
+            'errors': 'This shipping method is not allowed to create waybill',
+            'save': false
         }
     }
 
@@ -283,7 +284,9 @@ export default async (req, res) => {
 
             if (upsData.errors) {
                 console.log('upsData.errors', upsData.errors);
-                await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
+                if(upsData.save !== false) {
+                    await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
+                }
                 output += `${errorsPrefix} ${upsData.errors}`;
                 continue;
             }

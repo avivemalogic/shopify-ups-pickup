@@ -145,7 +145,7 @@ async function addCarriersService(shop, accessToken){
 
         await getResponseJsonAndSaveLogs('addCarriersService', shop, apiUrl, carrierServicesRequestOptions, addCarriersServiceResponse);
     } catch (e){
-        throw new Error(e);
+        //throw new Error(e);
     }
 }
 
@@ -168,7 +168,7 @@ async function createWebhook(topic, address, shop, accessToken){
 
         await getResponseJsonAndSaveLogs('createWebhook', shop, apiUrl, webhookRequestOptions, response);
     } catch (e){
-        throw new Error(e);
+        //throw new Error(e);
     }
 }
 
