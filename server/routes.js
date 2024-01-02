@@ -316,7 +316,6 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
     const wayBillNumber = data.wayBillNumber;
     const orderTags = data.orderTags.split(',').filter((item) => !item.includes('UPS Error:')).join(',');
     const additionalTags = data.additionalTags ? ', '+data.additionalTags : '';
-    const orderWeight = data.orderWeight+' Kg';
 
     const accessToken = data.accessToken || await getAccessToken(shop);
 
@@ -346,7 +345,7 @@ router.post('/api/save-order-waybill-number', bodyParser(), async (ctx, next) =>
             "order":
                 {
                     "id": orderId,
-                    "tags": `${orderTags ? orderTags+',' : ''} Sent To UPS, ${wayBillNumber}, ${orderWeight}${additionalTags}`
+                    "tags": `${orderTags ? orderTags+',' : ''} ${wayBillNumber}${additionalTags}`
                 }
         })
     };
