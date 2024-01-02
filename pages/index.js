@@ -362,6 +362,9 @@ class Index extends Component {
                                     enabled={state.enableGetWaybillStatus.value} >
                                     Get Waybill Status is <TextStyle variation="strong">{state.enableGetWaybillStatus.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
                                 </SettingToggle>
+                                <div style={{marginTop: '10px', marginBottom: '30px', display: 'flex', direction: 'rtl'}}>
+                                    <Icon color="interactive" source={CircleInformationMajor} /><span style={{flex: '1', marginRight: '10px'}}>סימון זה יאפשר לך לקבל את סטטוס המשלוח בשורת ההזמנה תחת מסך ההזמנות.<br/>בכדי לבדוק סטטוס משלוח עדכני עבור הזמנה, יש ללחוץ על Get Waybill Status בכפתור הפעולות.</span>
+                                </div>
 
                                 <SettingToggle
                                     action={{
