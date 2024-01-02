@@ -1,5 +1,5 @@
 const { HOST } = process.env;
-const { updatedMetafields, getFieldFromIntegrationData, getAccessToken, isGetWaybillStatusEnabled, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, getDate, getOrderPickupsData, saveOrderTag, saveWayBillNumberOnOrder, fullfillOrderItems, isFulfillOrderItemsEnabled, isFulfillOrderItemsCustomerNotify } = require('../../server/helper');
+const { updatedMetafields, getFieldFromIntegrationData, getAccessToken, isGetWaybillStatusEnabled, getRestApiAccessToken, getIntegrationData, getOrderData, formatDate, verifyHmac, getDate, getOrderPickupsData, saveOrderTag } = require('../../server/helper');
 
 async function restApiGetWaybillStatus(accessToken, apiAccessToken, integrationData, orderPickupsData){
     let apiHost = getFieldFromIntegrationData(integrationData,'upsApiUrl');
@@ -124,6 +124,8 @@ export default async (req, res) => {
             }
             const waybillStatusPrefixTag = 'סטטוס משלוח:';
             await saveOrderTag(shop, accessToken, orderId, orderTags, waybillStatusPrefixTag+upsData.waybillStatus, waybillStatusPrefixTag);
+            const newOrderTags = `${orderTags}, ${waybillStatusPrefixTag} ${upsData.waybillStatus}`;
+            await saveOrderTag(shop, accessToken, orderId, newOrderTags, `${waybillStatusPrefixTag} נכון ל ${formatDate(new Date())}`);
 
             output = upsData.waybillStatus;
         }

@@ -906,6 +906,16 @@ function getDate(){
     return '['+timePad(date.getFullYear()) + '-' + timePad(date.getMonth()+1) + '-' + timePad(date.getDate()) + ' ' + timePad(date.getHours()) + ':' + timePad(date.getMinutes()) + ':' + timePad(date.getSeconds())+']';
 }
 
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
 function getPickupPoint(data){
     const pickupPoint = data.orderPickupPoint;
     let id = null;
@@ -1045,5 +1055,6 @@ module.exports = {
     isFulfillOrderItemsCustomerNotify,
     isFulfillOrderItemsEnabled,
     isGetWaybillStatusEnabled,
-    isShippingMethodAllowCreateWaybill
+    isShippingMethodAllowCreateWaybill,
+    formatDate
 }
