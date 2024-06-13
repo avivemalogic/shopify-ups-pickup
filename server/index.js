@@ -20,7 +20,7 @@ const port = parseInt(process.env.PORT, 10) || 3000;
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
-const sharedFilesDir = '/mnt/ups-labels/';
+//const sharedFilesDir = '/mnt/ups-labels/';
 const { ENV, HOST, SHOPIFY_API_SECRET_KEY, SHOPIFY_API_KEY, API_VERSION } = process.env;
 
 app.prepare().then(() => {
@@ -45,6 +45,7 @@ app.prepare().then(() => {
 
     server.use(serve('./public'));
 
+    /*
     router.get(/^\/ups-labels\/(.*)$/, async (ctx, next) => {
         if (ENV === 'production' || ENV === 'staging') {
             const filePath = path.join(sharedFilesDir, ctx.params[0]);
@@ -52,7 +53,7 @@ app.prepare().then(() => {
         } else {
             return next(); // Skip to the next middleware/route handler
         }
-    });
+    });*/
 
     server.use(cors());
 

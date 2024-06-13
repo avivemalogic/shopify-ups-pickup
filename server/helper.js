@@ -431,9 +431,10 @@ async function mergePdf(pdfList, format){
     const pdfDir = 'ups-labels';
 
     let serverPdfDir = `./public/${pdfDir}`;
+    /*
     if (ENV === 'production' || ENV === 'staging') {
         serverPdfDir = '/mnt/ups-labels';
-    }
+    }*/
 
     const uniqueId = Date.now() * 123
     const pdfFilename = `ups_${format.toLowerCase()}_${uniqueId}.pdf`;
