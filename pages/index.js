@@ -22,7 +22,9 @@ import { CircleTickMajor, CircleInformationMajor } from "@shopify/polaris-icons"
 import AllowedShippingMethods from "../src/components/settings/AllowedShippingMethods";
 import React, { Component } from 'react';
 
-class Index extends Component {
+const PLUGIN_VERSION = '1.10.1';
+
+class Index extends Component{
     constructor(props) {
         super(props);
         this.state = {
@@ -39,8 +41,7 @@ class Index extends Component {
             'enableOrderIntegration': {},
             'fulfillOrderItems': {},
             'fulfillOrderItemsNotify': {},
-            'upsApiUrl': {},
-            'upsApiCreateUrl': {},
+            'upsIntegrationApiEnv': {},
             'upsIntegrationUsername': {},
             'upsIntegrationPassword': {},
             'upsIntegrationScope': {},
@@ -129,6 +130,10 @@ class Index extends Component {
 
     render() {
         const state = this.state;
+        const PROD_TEXT = 'Change to Production';
+        const TEST_TEXT = 'Change to Test';
+        const PROD_STATUS = 'production';
+        const TEST_STATUS = 'test';
         const DISABLE_TEXT = 'Disable';
         const ENABLE_TEXT = 'Enable';
         const DISABLE_STATUS = 'disabled';
@@ -382,22 +387,17 @@ class Index extends Component {
                                     onChange={this.handleChange('shippingMethodSelected', 'multiselect')}/>
                             }
 
-                            <Card sectioned>
-                                <TextField
-                                    value={state.upsApiCreateUrl.value === 'X' ? '' : state.upsApiCreateUrl.value}
-                                    onChange={this.handleChange('upsApiCreateUrl','text')}
-                                    label="REST Create Api URL"
-                                    type="text"
-                                />
-                            </Card>
-                            <Card sectioned>
-                                <TextField
-                                    value={state.upsApiUrl.value === 'X' ? '' : state.upsApiUrl.value}
-                                    onChange={this.handleChange('upsApiUrl','text')}
-                                    label="REST Api URL"
-                                    type="text"
-                                />
-                            </Card>
+                            <div style={{margin: '2rem 0'}}>
+                                <SettingToggle
+                                    action={{
+                                        content: state.upsIntegrationApiEnv.value === 'test' ? PROD_TEXT : TEST_TEXT,
+                                        onAction: () => { this.handleToggle('upsIntegrationApiEnv'); },
+                                    }}
+                                    enabled={state.upsIntegrationApiEnv.value} >
+                                    API Environment is: <TextStyle variation="strong">{state.upsIntegrationApiEnv.value === 'test' ? TEST_STATUS : PROD_STATUS}</TextStyle>.
+                                </SettingToggle>
+                            </div>
+
                             <Card sectioned>
                                 <TextField
                                     value={state.upsIntegrationUsername.value === 'X' ? '' : state.upsIntegrationUsername.value}
@@ -501,7 +501,7 @@ class Index extends Component {
                         <Form onSubmit={(e)=> this.handleSubmit(e)} disabled={state.isLoading}>
                             <FormLayout>
                                 {state.latestInstallation.value &&
-                                    <div style={{float: 'left'}}>Last Installed: {state.latestInstallation.value}</div>
+                                    <div style={{float: 'left'}}>Last Installed: {state.latestInstallation.value} | Version: {PLUGIN_VERSION}</div>
                                 }
                                 <Stack distribution="trailing">
                                     { state.savedText ? <span>{state.savedText}</span> : ''}
@@ -626,7 +626,11 @@ class Index extends Component {
     };
     handleToggle = (fieldName) => {
         const newObject = this.state[fieldName];
-        newObject.value = newObject.value === 'true' ? 'false' : 'true';
+        if(fieldName === 'upsIntegrationApiEnv'){
+            newObject.value = newObject.value === 'test' ? 'production' : 'test';
+        }else {
+            newObject.value = newObject.value === 'true' ? 'false' : 'true';
+        }
         this.setState({[fieldName]: newObject});
 
         if(this.state.isChanged.length === 0 || !this.state.isChanged.includes(fieldName)) {

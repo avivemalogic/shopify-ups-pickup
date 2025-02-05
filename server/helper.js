@@ -2,7 +2,7 @@ require("dotenv").config();
 const { ENV, HOST, SHOPIFY_API_SECRET_KEY, API_VERSION, DEBUG_MODE, SEQ_URL } = process.env;
 const crypto = require('crypto');
 const querystring = require('querystring');
-const DB_URL = 'http://api-shopify.emalogic.com';
+const DB_URL = 'https://testshplugapi.ship.co.il/shopify';
 const fs = require('fs');
 const { PDFDocument } = require('pdf-lib');
 
@@ -223,8 +223,40 @@ async function autoSendToUps(shop, accessToken, orderId){
     }
 }
 
+function getApiUrl(apiEnv, type){
+    if(apiEnv === 'test'){
+        if(type === 'upsApiCreateUrl'){
+            return 'https://testplugins.ship.co.il/';
+        }
+
+        if(type === 'upsApiUrl'){
+            return 'https://newbetaapi.ship.co.il/';
+        }
+    }
+
+    if(type === 'upsApiCreateUrl'){
+        return 'https://plugins.ship.co.il/';
+    }
+
+    if(type === 'upsApiUrl'){
+        return 'https://api.ship.co.il/';
+    }
+}
+
+function getApiEnv(integrationData){
+    try {
+        return integrationData.find((item) => item.key === 'upsIntegrationApiEnv').value;
+    } catch (e){
+        return undefined;
+    }
+}
+
 function getFieldFromIntegrationData(integrationData, fieldKey){
     try {
+        if(fieldKey === 'upsApiCreateUrl' || fieldKey === 'upsApiUrl'){
+            const apiEnv = getApiEnv(integrationData);
+            return getApiUrl(apiEnv, fieldKey);
+        }
         return integrationData.find((item) => item.key === fieldKey).value;
     } catch (e){
         return undefined;

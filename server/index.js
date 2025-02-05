@@ -2,14 +2,15 @@ require('isomorphic-fetch');
 const dotenv = require('dotenv');
 const Koa = require('koa');
 const serve = require('koa-static')
-const path = require('path');
-const send = require('koa-send');
+/*const path = require('path');
+const send = require('koa-send');*/
+const helmet = require('koa-helmet');
 const cors = require('koa-cors');
 const next = require('next');
 const { createShopifyAuth, getQueryKey } = require("koa-shopify-auth-cookieless");
 const session = require('koa-session');
 const { insertAccessToken } = require('./helper');
-const { createPickUpsOptions, addPickupPointScripts, addCarriersService, createWebhook } = require('./init');
+const { createPickUpsOptions, addCarriersService, createWebhook } = require('./init');
 const router = require('./routes');
 const cronJob = require('./cronJob');
 
@@ -25,6 +26,7 @@ const { ENV, HOST, SHOPIFY_API_SECRET_KEY, SHOPIFY_API_KEY, API_VERSION } = proc
 
 app.prepare().then(() => {
     const server = new Koa();
+
     server.use(session({ secure: true, sameSite: 'none' }, server));
     server.keys = [SHOPIFY_API_SECRET_KEY];
 
@@ -69,7 +71,6 @@ app.prepare().then(() => {
                 try {
                     await insertAccessToken(shop, accessToken);
                     await createPickUpsOptions(shop, accessToken, true);
-                    await addPickupPointScripts(shop, accessToken);
                     await addCarriersService(shop, accessToken);
                     await createWebhook('orders/create', 'order-create', shop, accessToken);
                 } catch (e){
@@ -83,6 +84,60 @@ app.prepare().then(() => {
 
     server.use(router.routes())
         .use(router.allowedMethods());
+
+    server.use(async (ctx, next) => {
+        const shop = ctx.query.shop || ctx.session.shop;
+
+        const cspMiddleware = helmet({
+            contentSecurityPolicy: {
+                directives: {
+                    defaultSrc: ["'self'"],
+                    frameAncestors: [
+                        "'self'",
+                        'https://admin.shopify.com',
+                        `https://${shop}`
+                    ],
+                    scriptSrc: [
+                        "'self'",
+                        "'unsafe-inline'",
+                        "'unsafe-eval'",
+                        "https://www.pickuppoint.co.il",
+                        "https://pickuppoint.co.il",
+                        "https://maps.googleapis.com"
+                    ],
+                    scriptSrcAttr: ["'self'", "'unsafe-inline'"],
+                    styleSrc: [
+                        "'self'",
+                        "'unsafe-inline'",
+                        "https://www.pickuppoint.co.il",
+                        "https://pickuppoint.co.il",
+                        "https://fonts.googleapis.com"
+                    ],
+                    imgSrc: [
+                        "'self'",
+                        'data:',
+                        'https:',
+                        'https://www.pickuppoint.co.il'
+                    ],
+                    connectSrc: [
+                        "'self'",
+                        `https://${shop}`,
+                        "https://maps.googleapis.com",
+                        "https://www.pickuppoint.co.il",
+                        "https://pickuppoint.co.il"
+                    ],
+                    frameSrc: [
+                        "'self'",
+                        `https://${shop}`,
+                        'https://admin.shopify.com'
+                    ]
+                }
+            },
+            crossOriginEmbedderPolicy: false
+        });
+
+        await cspMiddleware(ctx, next);
+    });
 
     server.use(async (ctx) => {
         await handle(ctx.req, ctx.res);

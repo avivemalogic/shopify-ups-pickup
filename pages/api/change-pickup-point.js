@@ -79,5 +79,6 @@ export default async (req, res) => {
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html');
-    res.redirect(`/change-pickup-point?${urlParams}&output=${output}&ups_pickups_type=${upsPickupsType}&ups_pickups_map_type=${upsPickupsMapType}`);
+    const safeUrl = encodeURI(`/change-pickup-point?${urlParams}&output=${output}&ups_pickups_type=${upsPickupsType}&ups_pickups_map_type=${upsPickupsMapType}`);
+    res.redirect(safeUrl);
 }

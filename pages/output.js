@@ -14,6 +14,7 @@ class Output extends Component {
         this.state = {
             'apiKey': API_KEY,
             'shop': '',
+            'host': '',
             'orderId': '',
             'output': [],
             'file': null
@@ -26,6 +27,7 @@ class Output extends Component {
             this.setState({
                 'output': unescape(getParameters.output.replaceAll('$','#')),
                 'shop': unescape(getParameters.shop),
+                'host': unescape(getParameters.shop),
                 'orderId': unescape(getParameters.order_id)
             })
 
@@ -91,7 +93,8 @@ class Output extends Component {
     buttonClick = () => {
         const app = createApp({
             apiKey: this.state.apiKey,
-            shopOrigin: this.state.shop,
+            host: this.state.host,
+            forceRedirect: true
         });
         const orderIdPath = this.state.orderId ? '/'+this.state.orderId : '';
         const redirect = Redirect.create(app);

@@ -1,6 +1,6 @@
 {
   "name": "shopify-ups-pickup",
-  "version": "1.9.5",
+  "version": "1.10.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -23,6 +23,7 @@
     "koa": "^2.13.0",
     "koa-bodyparser": "^4.3.0",
     "koa-cors": "0.0.16",
+    "koa-helmet": "^7.0.2",
     "koa-router": "^9.4.0",
     "koa-send": "^5.0.1",
     "koa-session": "^6.0.0",

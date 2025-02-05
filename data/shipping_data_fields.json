@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.2.2",
+    "value": "1.2.4",
     "type": "string"
   },
   {
@@ -37,14 +37,8 @@
   },
   {
     "namespace": "pickups-integration",
-    "key": "upsApiCreateUrl",
-    "value": "https://plugins.ship.co.il/",
-    "type": "string"
-  },
-  {
-    "namespace": "pickups-integration",
-    "key": "upsApiUrl",
-    "value": "https://api.ship.co.il/",
+    "key": "upsIntegrationApiEnv",
+    "value": "production",
     "type": "string"
   },
   {

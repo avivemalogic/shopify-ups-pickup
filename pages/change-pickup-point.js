@@ -16,6 +16,7 @@ class Output extends Component {
             'apiKey': API_KEY,
             'noteText': 'שימו לב, בעת עדכון נקודה איסוף, שדה הערות ההזמנה יתאפס, במידה ושמרתם שם מידע, אנא שמרו אותו לפני ביצוע הפעולה',
             'shop': '',
+            'host': '',
             'output': [],
             'requestQuery': {},
             'pickupPoint': ''
@@ -32,11 +33,12 @@ class Output extends Component {
             await this.setState({
                 'output': unescape(output),
                 'shop': unescape(getParameters.shop),
+                'host': unescape(getParameters.host),
                 'requestQuery': getParameters
             })
 
             if(output === ''){
-                const upsPickupsType = getParameters.ups_pickups_type || '';
+                const upsPickupsType = getParameters.ups_pickups_type || 'all';
                 const upsPickupsMapType = getParameters.ups_pickups_map_type || '';
                 const pkp = document.createElement('script');
                 pkp.type = 'text/javascript';
@@ -91,7 +93,8 @@ class Output extends Component {
         }catch (e) {
             const app = createApp({
                 apiKey: this.state.apiKey,
-                shopOrigin: this.state.shop,
+                host: this.state.host,
+                forceRedirect: true
             });
 
             const redirect = Redirect.create(app);
