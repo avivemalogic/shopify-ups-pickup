@@ -5,7 +5,7 @@ const Router = require('koa-router');
 const router = new Router();
 const bodyParser = require('koa-bodyparser');
 const { verifyToken, getQueryKey } = require("koa-shopify-auth-cookieless");
-const { verifyHmacWebhook, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps, getCustomerTypeApi, getDate, getMetafieldsCount } = require('./helper');
+const { formatDate, saveOrderTag, isGetWaybillStatusEnabled, getOrderPickupsData, verifyHmacWebhook, createHmacWebhook, isIpWhitelist, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps, getCustomerTypeApi, getDate, getMetafieldsCount } = require('./helper');
 const { createPickUpsOptions } = require('./init');
 const { HOST, API_VERSION,DEBUG_MODE } = process.env;
 
@@ -514,8 +514,9 @@ router.post('/api/save-order-tags-error', bodyParser(), async (ctx, next) => {
 
     const apiUrl = `https://${shop}/admin/api/${API_VERSION}/orders/${orderId}.json`;
     const tagsResponse = await fetch(apiUrl, tagsRequestOptions);
+    await getResponseJsonAndSaveLogs('save-order-tags-error', shop, apiUrl, tagsRequestOptions, tagsResponse);
 
-    ctx.body = await getResponseJsonAndSaveLogs('save-order-tags-error', shop, apiUrl, tagsRequestOptions, tagsResponse);
+    ctx.body = { success: true, orderTags: newTag };
     ctx.statusCode = 200;
 });
 
@@ -611,6 +612,128 @@ router.post('/api/get-order', bodyParser(), async (ctx, next) => {
     ctx.body = await getResponseJsonAndSaveLogs('get-order', shop, apiUrl, requestOptions, response);
     ctx.statusCode = 200;
 });
+
+
+router.post('/api/webhook/status-update', bodyParser(), async (ctx, next) => {
+    const headers = ctx.request.headers;
+    const body = ctx.request.body;
+    const errorPrefix = 'Status Update: ';
+    const shop = body.urlShop;
+    const orderId = body.ref1;
+    const trackNo = body.trackNo;
+
+    let statusCode = 200;
+    let errorMessage;
+    let returnCode = -1;
+    try {
+        if(headers['x-shopify-topic'] !== 'custom-status-update'){
+            statusCode = 403;
+            errorMessage = 'Access denied';
+            throw new Error(`${errorPrefix} topic is wrong`);
+        }
+
+        const ip = ctx.ip;
+        if(isIpWhitelist(ip)){
+            statusCode = 403;
+            errorMessage = 'Access denied';
+            throw new Error('Unauthorized');
+        }
+
+        const accessToken = await getAccessToken(shop);
+
+        const getOrderJson = await getOrderData(shop, accessToken, orderId);
+        if (getOrderJson.errors) {
+            throw new Error(getOrderJson.errors);
+        }
+
+        const orderName = getOrderJson.order.name;
+        let orderTags = getOrderJson.order.tags;
+        const errorsPrefix = `Cant update waybill status for order ${orderName} - `;
+
+        const orderPickupsData = await getOrderPickupsData(shop, accessToken, orderId);
+        if (!orderPickupsData.orderWaybillNumber) {
+            throw new Error(`Order ${orderName} Doesnt have Waybill`);
+        }
+
+        const integrationData = await getIntegrationData(shop, accessToken);
+        if(integrationData['error']){
+            throw new Error(`${errorsPrefix} ${integrationData['message']}`);
+        }
+
+        if (!isGetWaybillStatusEnabled(integrationData)) {
+            const error = 'Get waybill status setting is Disabled';
+            throw new Error(`${errorsPrefix} ${error}`);
+        }
+
+        const waybillStatus = getWaybillStatusFromWebhook(body);
+
+        // TODO: copy func to get-waybill-status
+        if(waybillStatus.status) {
+            const waybillStatusPrefixTag = 'סטטוס משלוח:';
+            const waybillStatusTag = `${waybillStatusPrefixTag} ${waybillStatus.status}`;
+            orderTags = await saveOrderTag(shop, accessToken, orderId, orderTags, waybillStatusTag, waybillStatusPrefixTag);
+        }
+
+        if(waybillStatus.statusMessage) {
+            const waybillStatusDescPrefixTag = 'תיאור משלוח:';
+            const waybillStatusDescTag = `${waybillStatusDescPrefixTag} ${waybillStatus.statusMessage}`;
+            orderTags = await saveOrderTag(shop, accessToken, orderId, orderTags, waybillStatusDescTag, waybillStatusDescPrefixTag);
+        }
+
+        if(waybillStatus.status) {
+            const waybillStatusDatePrefixTag = 'סטטוס אחרון:';
+            const waybillStatusDateTag = `${waybillStatusDatePrefixTag} נכון ל ${formatDate(new Date())}`;
+            orderTags = saveOrderTag(shop, accessToken, orderId, orderTags, waybillStatusDateTag, waybillStatusDatePrefixTag);
+        }
+
+        returnCode = 1;
+    } catch (e){
+        console.log(`${errorPrefix} ${e}`);
+        errorMessage = e;
+    }
+
+    ctx.statusCode = statusCode;
+    ctx.status = statusCode;
+    ctx.body = {
+        trackNo: trackNo,
+        returnCode: returnCode,
+        errorMessage: errorMessage
+    };
+});
+
+const getWaybillStatusFromWebhook = (body) => {
+
+    let statusMessage = '';
+    let status = '';
+    try {
+        const statusCode = body.statusCode;
+        status = body.statusDescHeb;
+        switch (statusCode) {
+            case "4":
+                statusMessage = ` ל${body.receivedBy} ב- ${body.statusTime}`;
+                break;
+            case "6":
+                statusMessage = ` מתאריך ${body.statusTime}`;
+                break;
+            case "7":
+                statusMessage = ` ${body.rtsTrackNo}`;
+                break;
+            case "8":
+                statusMessage = ` ${body.exceptionDescHeb}`;
+                break;
+            case "10":
+                statusMessage = ` צפוי להימסר ב-${body.estimateDelivery}`;
+                break;
+        }
+    } catch(e){
+        console.log('Error: '+e)
+    }
+
+    return {
+        'status': status,
+        'statusMessage': statusMessage
+    }
+}
 
 router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
     const headers = ctx.request.headers;

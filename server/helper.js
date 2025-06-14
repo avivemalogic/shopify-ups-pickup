@@ -1,8 +1,7 @@
 require("dotenv").config();
-const { ENV, HOST, SHOPIFY_API_SECRET_KEY, API_VERSION, DEBUG_MODE, SEQ_URL } = process.env;
+const { ENV, HOST, SHOPIFY_API_SECRET_KEY, WHITELIST_IPS, API_VERSION, DEBUG_MODE, SEQ_URL, DB_URL } = process.env;
 const crypto = require('crypto');
 const querystring = require('querystring');
-const DB_URL = 'https://testshplugapi.ship.co.il/shopify';
 const fs = require('fs');
 const { PDFDocument } = require('pdf-lib');
 
@@ -81,8 +80,9 @@ async function getShippingData(shop, accessToken, checkAuth = false){
 }
 
 async function saveOrderTag(shop, accessToken, orderId, orderTags, message, removeTagPrefix = null){
+    console.log('orderTags', orderTags)
     if(orderTags.includes(message)){
-        return true;
+        return orderTags;
     }
     const response = await fetch(`${HOST}api/save-order-tags-error`, {
         method: 'POST',
@@ -93,7 +93,11 @@ async function saveOrderTag(shop, accessToken, orderId, orderTags, message, remo
         body: JSON.stringify({'shop': shop, 'accessToken': accessToken, 'orderId': orderId, 'orderError': message, 'orderTags': orderTags, 'removeTagPrefix': removeTagPrefix})
     });
 
-    return await response.json();
+    const responseJson = await response.json();
+
+    console.log('responseJson', responseJson);
+
+    return responseJson.orderTags;
 }
 
 async function saveOrderTagError(shop, accessToken, orderId, orderTags, error){
@@ -508,12 +512,44 @@ function verifyHmac(requestQuery, hmac, isBulkAction){
     return generatedHash === hmac;
 }
 
+function isIpWhitelist(ip){
+    const whitelist = WHITELIST_IPS
+        ? WHITELIST_IPS.split(',').map(ip => ip.trim())
+        : [];
+    console.log('whitelist', whitelist)
+    return !whitelist.includes(ip);
+}
+
+async function createHmacWebhook(rawBody){
+    try {
+        const hmac = await crypto
+            .createHmac('sha256', SHOPIFY_API_SECRET_KEY)
+            .update(rawBody)
+            .digest('base64');
+
+        return hmac;
+    } catch(e){
+        console.log(getDate()+' createHmacWebhook error', e);
+    }
+
+    return false;
+}
+
 async function verifyHmacWebhook(rawBody, hmac){
     try {
         const generatedHash = crypto
             .createHmac('sha256', SHOPIFY_API_SECRET_KEY)
             .update(rawBody)
             .digest('base64');
+
+        /*
+
+        check this for webhook task, also change .update(rawBody) to .update(rawBody, 'utf8')
+        crypto.timingSafeEqual(
+            Buffer.from(hmacHeader || '', 'utf8'),
+            Buffer.from(generatedHmac, 'utf8')
+          );
+         */
         return generatedHash === hmac;
     } catch(e){
         console.log(getDate()+' rawBodyError', e);
@@ -1053,6 +1089,8 @@ module.exports = {
     getRestApiAccessToken,
     verifyHmac,
     verifyHmacWebhook,
+    createHmacWebhook,
+    isIpWhitelist,
     getAccessToken,
     insertAccessToken,
     isPickUpsShippingMethod,

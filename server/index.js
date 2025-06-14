@@ -27,6 +27,8 @@ const { ENV, HOST, SHOPIFY_API_SECRET_KEY, SHOPIFY_API_KEY, API_VERSION } = proc
 app.prepare().then(() => {
     const server = new Koa();
 
+    server.proxy = true;
+
     server.use(session({ secure: true, sameSite: 'none' }, server));
     server.keys = [SHOPIFY_API_SECRET_KEY];
 
