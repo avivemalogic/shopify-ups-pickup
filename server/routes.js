@@ -113,6 +113,7 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
 
             let isAuthValid = 'error';
             let customerType = '';
+            let isCreditExport = false;
 
             if(!customerTypeResponse['errors']){
                 isAuthValid = false
@@ -121,10 +122,12 @@ router.post('/api/get-shipping-data', bodyParser(), async (ctx, next) => {
             if(customerTypeResponse['response']){
                 isAuthValid = true;
                 customerType = customerTypeResponse['response'] || 'מזומן';
+                isCreditExport = customerTypeResponse['isCreditExport'];
             }
 
             dataJson.isAuthValid = isAuthValid;
             dataJson.customerType = customerType;
+            dataJson.isCreditExport = isCreditExport;
         }
     }
 

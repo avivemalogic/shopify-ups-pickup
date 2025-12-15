@@ -1,16 +1,16 @@
-const { isShippingMethodAllowCreateWaybill, getOrderAdditionalInfo, getNumberOfPackages, validatePhoneNumber, getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate, getAccessToken, getOrderPickupsData, saveOrderTagError, getOrderWeight, saveWayBillNumberOnOrder, saveLeadIdOnOrder, fullfillOrderItems, isFulfillOrderItemsEnabled, isFulfillOrderItemsCustomerNotify } = require('../../server/helper');
+const { isShippingMethodAllowCreateWaybill, getOrderAdditionalInfo, getNumberOfPackages, validatePhoneNumber, getOrderPhoneNumber, getOrderCustomerName, sleep, getPickupPoint, getReference2Field, saveOrderPickupPoint, getShippingData, getClosestPoints, orderClosestPointsWhileSendToUpsIsEnabled, updatedMetafields, saveOrderWeight, mergePdf, restApiPrintLabel, getFieldFromIntegrationData, getRestApiAccessToken, getIntegrationData, getOrderData, orderIntegrationIsEnabled, verifyHmac, isPickUpsShippingMethod, getResponseJsonAndSaveLogs, getDate, getAccessToken, getOrderPickupsData, saveOrderTagError, getOrderWeight, saveWayBillNumberOnOrder, saveLeadIdOnOrder, fullfillOrderItems, isFulfillOrderItemsEnabled, isFulfillOrderItemsCustomerNotify, isValidExportOrder, convertToExportFormat, getValidationErrorsArray, isExportOrder } = require('../../server/helper');
 
-function getHouseNumber(streetAddress){
+function getHouseNumber(streetAddress) {
     const houseNumber = streetAddress.match(/[0-9]+/g);
-    if(houseNumber !== null){
+    if (houseNumber !== null) {
         return houseNumber[0];
     }
     return '';
 }
 
-function isValidPhoneNumber(phoneNumber){
+function isValidPhoneNumber(isExportOrderCondition, phoneNumber){
     if(!phoneNumber) return false;
-    return !!validatePhoneNumber(phoneNumber);
+    return !!validatePhoneNumber(phoneNumber, isExportOrderCondition);
 }
 
 function splitPhonePrefix(phoneNumber){
@@ -31,7 +31,12 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
         apiHost = 'https://plugins.ship.co.il/';
     }
 
-    const apiUrl = apiHost + 'api/v1/shipment/insert-domestic-wb-by-customer';
+    const isExportOrderCondition = isExportOrder(getOrderJson.order);
+    let apiPath = 'api/v1/shipment/insert-domestic-wb-by-customer';
+    if(isExportOrderCondition){
+        apiPath = 'api/v1/export/insert-lead-by-customer';
+    }
+    const apiUrl = apiHost + apiPath;
     const customerEmail = getOrderJson.order.email;
     const customerName = getOrderCustomerName(getOrderJson.order);
     const cityName = getOrderJson.order.shipping_address.city;
@@ -67,10 +72,10 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
     const orderAdditionalInfo = await getOrderAdditionalInfo(shop, accessToken, orderOriginalId);
     const customerType = shippingData['customerType'] || null;
 
-    if(!isValidPhoneNumber(phoneNumber)){
+    if (!isValidPhoneNumber(isExportOrderCondition, phoneNumber)) {
         return {
-            'errors': 'Phone Number is invalid'
-        }
+            errors: 'Phone Number is invalid'
+        };
     }
 
     let functionArgs = {
@@ -82,8 +87,8 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
             'HouseNumber': '',
             'RoomNumber': houseNumber,
             'StreetName': streetName,
-            'Phone1': validatePhoneNumber(phoneNumber),
-            'Phone2': validatePhoneNumber(phoneNumber),
+            'Phone1': validatePhoneNumber(phoneNumber, isExportOrderCondition),
+            'Phone2': validatePhoneNumber(phoneNumber, isExportOrderCondition),
             'ZipCode': customerZipcode,
             'ContactEmail': customerEmail
         },
@@ -165,6 +170,10 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
         })
     }
 
+    if(isValidExportOrder(getOrderJson.order, integrationData, shippingData)){
+        functionArgs = convertToExportFormat(functionArgs, getOrderJson.order);
+    }
+
     const requestOptions = {
         method: 'POST',
         headers: {
@@ -175,6 +184,7 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
     };
 
     let trackingNumber,leadId;
+
     try {
         const response = await fetch(apiUrl, requestOptions);
 
@@ -186,6 +196,11 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
 
         if (data['Message'] || data['ErrorCode'] > 0 || data['ErrorCode'] === -1) {
             throw data['Message'] || data['ErrorMessage'];
+        }
+
+        const errorsArray = getValidationErrorsArray(data);
+        if (errorsArray.length > 0) {
+            throw errorsArray.join(', ');
         }
 
         if (data['LeadId']) {
@@ -233,119 +248,125 @@ export default async (req, res) => {
         }
 
         let pdfList = [];
-        for (let i = 0, orderIdsLength = orderIds.length; i < orderIdsLength; ++i) {
-            const orderId = orderIds[i];
+        const orderIdsLength = orderIds.length
 
-            if (output !== '') {
-                output += '<br />';
-            }
-            const getOrderJson = await getOrderData(shop, accessToken, orderId);
-            if (getOrderJson.errors) {
-                output += `${getOrderJson.errors}`;
-                continue;
-            }
+        if (orderIdsLength >= 8) {
+            output += "You can only create a waybill for up to 7 orders at a time.";
+        } else {
+            for (let i = 0; i < orderIdsLength; ++i) {
+                const orderId = orderIds[i];
 
-            const orderName = getOrderJson.order.name;
-            const orderTags = getOrderJson.order.tags;
-            const errorsPrefix = `Cant send order ${orderName} to Ups - `;
-
-            const orderPickupsData = await getOrderPickupsData(shop, accessToken, orderId);
-            if (orderPickupsData.orderSentToUps) {
-                output += `Order ${orderName} Already Sent to Ups`;
-                continue;
-            }
-            if (orderPickupsData.orderLeadId) {
-                output += `Lead already created for order ${orderName}`;
-                continue;
-            }
-
-            const shippingData = await getShippingData(shop, accessToken, true);
-            if(shippingData['error']){
-                output += `${errorsPrefix} ${shippingData['message']}`;
-                continue;
-            }
-            const integrationData = shippingData.metafields.filter((item) => item.namespace === 'pickups-integration');
-            if (!orderIntegrationIsEnabled(integrationData)) {
-                const error = 'Order Integration setting is Disabled';
-                await saveOrderTagError(shop, accessToken, orderId, orderTags, error);
-                output += `${errorsPrefix} ${error}`;
-                continue;
-            }
-
-            const { isLoggedIn, apiAccessToken } = await getRestApiAccessToken(integrationData ,'create');
-            if (!isLoggedIn) {
-                const error = 'Rest API Auth Error';
-                await saveOrderTagError(shop, accessToken, orderId, orderTags, error);
-                output += `${errorsPrefix} ${error}`;
-                continue;
-            }
-
-            const upsData = await restApiSendToUps(shop, accessToken, apiAccessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags);
-
-            if (upsData.errors) {
-                console.log('upsData.errors', upsData.errors);
-                if(upsData.save !== false) {
-                    await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
+                if (output !== '') {
+                    output += '<br />';
                 }
-                output += `${errorsPrefix} ${upsData.errors}`;
-                continue;
-            }
-
-            const orderWeight = getOrderWeight(integrationData, getOrderJson.order.line_items);
-
-            await saveOrderWeight(shop, accessToken, orderId, orderWeight);
-
-            if(upsData.leadId) {
-                const leadId = upsData.leadId;
-
-                const response = await saveLeadIdOnOrder(shop, accessToken, orderId, leadId, orderTags, orderWeight);
-                if (response.errors) {
-                    await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
-                    output += `${errorsPrefix} ${response.errors}`;
+                const getOrderJson = await getOrderData(shop, accessToken, orderId);
+                if (getOrderJson.errors) {
+                    output += `${getOrderJson.errors}`;
                     continue;
                 }
 
-                output += `Order ${orderName} Sent - New lead created `;
-            }else{
-                const wayBillNumber = upsData.wayBillNumber;
+                const orderName = getOrderJson.order.name;
+                const orderTags = getOrderJson.order.tags;
+                const errorsPrefix = `Cant send order ${orderName} to Ups - `;
 
-                const response = await saveWayBillNumberOnOrder(shop, accessToken, orderId, wayBillNumber, orderTags, orderWeight, upsData.closestPointAccuracyLabel);
-                if (response.errors) {
-                    await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
-                    output += `${errorsPrefix} ${response.errors}`;
+                const orderPickupsData = await getOrderPickupsData(shop, accessToken, orderId);
+                if (orderPickupsData.orderSentToUps) {
+                    output += `Order ${orderName} Already Sent to Ups`;
+                    continue;
+                }
+                if (orderPickupsData.orderLeadId) {
+                    output += `Lead already created for order ${orderName}`;
                     continue;
                 }
 
-                output += `Order ${orderName} Sent to UPS `;
-
-                if(isFulfillOrderItemsEnabled(integrationData)) {
-                    const fulfillResponse = await fullfillOrderItems(shop, accessToken, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
-
-                    if (fulfillResponse.errors) {
-                        output += `<br /> ${fulfillResponse.errors}`;
-                    }
+                const shippingData = await getShippingData(shop, accessToken, true);
+                if (shippingData['error']) {
+                    output += `${errorsPrefix} ${shippingData['message']}`;
+                    continue;
+                }
+                const integrationData = shippingData.metafields.filter((item) => item.namespace === 'pickups-integration');
+                if (!orderIntegrationIsEnabled(integrationData)) {
+                    const error = 'Order Integration setting is Disabled';
+                    await saveOrderTagError(shop, accessToken, orderId, orderTags, error);
+                    output += `${errorsPrefix} ${error}`;
+                    continue;
                 }
 
-                if(printLabel){
-                    const {isLoggedIn, apiAccessToken} = await getRestApiAccessToken(integrationData, 'print');
-                    if (!isLoggedIn) {
-                        output += `${errorsPrefix} Print API Auth Error`;
+                const {isLoggedIn, apiAccessToken} = await getRestApiAccessToken(integrationData, 'create');
+                if (!isLoggedIn) {
+                    const error = 'Rest API Auth Error';
+                    await saveOrderTagError(shop, accessToken, orderId, orderTags, error);
+                    output += `${errorsPrefix} ${error}`;
+                    continue;
+                }
+
+                const upsData = await restApiSendToUps(shop, accessToken, apiAccessToken, shippingData, integrationData, getOrderJson, orderPickupsData, orderTags);
+
+                if (upsData.errors) {
+                    console.log('upsData.errors', upsData.errors);
+                    if (upsData.save !== false) {
+                        await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
+                    }
+                    output += `${errorsPrefix} ${upsData.errors}`;
+                    continue;
+                }
+
+                const orderWeight = getOrderWeight(integrationData, getOrderJson.order.line_items);
+
+                await saveOrderWeight(shop, accessToken, orderId, orderWeight);
+
+                if (upsData.leadId) {
+                    const leadId = upsData.leadId;
+
+                    const response = await saveLeadIdOnOrder(shop, accessToken, orderId, leadId, orderTags, orderWeight);
+                    if (response.errors) {
+                        await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
+                        output += `${errorsPrefix} ${response.errors}`;
                         continue;
                     }
 
-                    const upsPrintLabel = await restApiPrintLabel(accessToken, apiAccessToken, integrationData, wayBillNumber, format);
+                    output += `Order ${orderName} Sent - New lead created `;
+                } else {
+                    const wayBillNumber = upsData.wayBillNumber;
 
-                    if (upsPrintLabel.errors) {
-                        output += `${errorsPrefix} ${upsPrintLabel.errors}`;
+                    const response = await saveWayBillNumberOnOrder(shop, accessToken, orderId, wayBillNumber, orderTags, orderWeight, upsData.closestPointAccuracyLabel);
+                    if (response.errors) {
+                        await saveOrderTagError(shop, accessToken, orderId, orderTags, upsData.errors);
+                        output += `${errorsPrefix} ${response.errors}`;
                         continue;
                     }
 
-                    pdfList.push(upsPrintLabel.response);
-                }
-            }
+                    output += `Order ${orderName} Sent to UPS `;
 
-            if(orderIdsLength-1 > i) {
-                await sleep();
+                    if (isFulfillOrderItemsEnabled(integrationData)) {
+                        const fulfillResponse = await fullfillOrderItems(shop, accessToken, orderId, wayBillNumber, isFulfillOrderItemsCustomerNotify(integrationData));
+
+                        if (fulfillResponse.errors) {
+                            output += `<br /> ${fulfillResponse.errors}`;
+                        }
+                    }
+
+                    if (printLabel) {
+                        const {isLoggedIn, apiAccessToken} = await getRestApiAccessToken(integrationData, 'print');
+                        if (!isLoggedIn) {
+                            output += `${errorsPrefix} Print API Auth Error`;
+                            continue;
+                        }
+
+                        const upsPrintLabel = await restApiPrintLabel(accessToken, apiAccessToken, integrationData, wayBillNumber, format);
+
+                        if (upsPrintLabel.errors) {
+                            output += `${errorsPrefix} ${upsPrintLabel.errors}`;
+                            continue;
+                        }
+
+                        pdfList.push(upsPrintLabel.response);
+                    }
+                }
+
+                if (orderIdsLength - 1 > i) {
+                    await sleep();
+                }
             }
         }
 

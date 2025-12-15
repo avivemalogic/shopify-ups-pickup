@@ -352,7 +352,9 @@ async function getCustomerTypeApi(integrationData){
             throw dataJson['Message'] || dataJson['Result']['ErrorMessage'];
         }
 
-        return { 'response': dataJson['IsCreditDomestic'] === true ? 'אשראי' : 'מזומן' };
+        const customerType = dataJson['IsCreditDomestic'] === true ? 'אשראי' : 'מזומן';
+        const isCreditExport = dataJson['IsCreditExport'] === true;
+        return { 'response': customerType, 'isCreditExport': isCreditExport };
 
     } catch (e) {
         console.log(getDate()+' getCustomerTypeApi Error: ',e);
@@ -1024,7 +1026,7 @@ function getReference2Field(reference2Type, order, orderPickupsData, shippingDat
             reference2Value = order.email || '';
             break;
         case 'phone_number':
-            reference2Value = validatePhoneNumber(getOrderPhoneNumber(order)) || '';
+            reference2Value = validatePhoneNumber(getOrderPhoneNumber(order), isExportOrder(order)) || '';
             break;
         case 'pickup_point_id':
             reference2Value = pickupPointId || '';
@@ -1040,8 +1042,11 @@ function getReference2Field(reference2Type, order, orderPickupsData, shippingDat
     return reference2Value.slice(0, 30);
 }
 
-function validatePhoneNumber(phoneNumber){
+function validatePhoneNumber(phoneNumber, isExportOrderCondition){
     try {
+        if(isExportOrderCondition){
+            return phoneNumber.replace(/\D+/g, '');
+        }
         const validNumber = phoneNumber.replace(' ', '').replace('+972', '0').replace(/-/g, '').match(/^0(5[^7])[0-9]{7}$/);
         if(validNumber === null) return false;
         return validNumber[0];
@@ -1076,6 +1081,177 @@ function isFulfillOrderItemsEnabled(integrationData){
 
 function isFulfillOrderItemsCustomerNotify(integrationData){
     return getFieldFromIntegrationData(integrationData,'fulfillOrderItemsNotify') === 'true';
+}
+
+function isInternationalExportEnable(integrationData){
+    return getFieldFromIntegrationData(integrationData,'internationalExportEnable') === 'true';
+}
+
+function isExportOrder(order){
+    return order.shipping_address.country_code !== 'IL';
+}
+
+function isValidExportOrder(order, integrationData, shippingData){
+    return !!(isExportOrder(order) && isInternationalExportEnable(integrationData) && shippingData['isCreditExport']);
+}
+
+function getPackageForExportOrder(data){
+    const numPackages = data['NumberOfPackages'];
+    const packages = [];
+
+    for (let i = 0; i < numPackages; i++) {
+        packages.push({
+            Weight: data['Weight'],
+            Height: null,
+            Width:  null,
+            Length: null,
+            Description: null,
+            Quantity: 1,
+            Ref1: String(data['Reference1'] || ''),
+            Ref2: String(data['Reference2'] || '')
+        });
+    }
+
+    return packages;
+}
+
+function getInvoiceItemsForExportOrderShopify(order) {
+    const invoiceItems = [];
+    // Shopify uses "presentment_currency" for the currency displayed to the customer/shop
+    const currency = order.presentment_currency || order.currency;
+    let invoiceItemsValue = 0.0;
+
+    // Iterate over each item in the 'line_items' array (Shopify equivalent of $order->get_items())
+    if (order.line_items && Array.isArray(order.line_items)) {
+        order.line_items.forEach(item => {
+
+            // In Shopify, item data (like name, price, quantity) is inline within the line_item object
+            const productName = item.name;
+            // The 'title' field often serves as a good product description/name as well
+            const productDescription = item.title;
+            const quantity = item.quantity;
+
+            // In Shopify REST API, 'price' is the unit price for that item line (after discounts on the item level)
+            // We use the item 'price' field to get the correct value for each line item.
+            const unitValue = parseFloat(item.price);
+
+            if (isNaN(unitValue)) {
+                console.warn(`Skipping item ${productName} due to invalid price: ${item.price}`);
+                return; // Continue to next iteration in the loop
+            }
+
+            // Calculate the subtotal for this specific line item
+            const itemSubtotal = unitValue * quantity;
+            invoiceItemsValue += itemSubtotal;
+
+            invoiceItems.push({
+                'Name': productName,
+                'Description': productDescription,
+                'Quantity': quantity,
+                'Unit': 'EA', // Defaulting to 'Each'
+                'UnitValue': unitValue,
+                'UnitValueCurrency': currency,
+                'OriginCountry': 'IL', // Defaulting to Israel as in original code
+                'CustomsCode': null,
+                'ShipmentLeadId': null,
+            });
+        });
+    }
+
+    // You might want to format the total value to 2 decimal places here
+    invoiceItemsValue = parseFloat(invoiceItemsValue.toFixed(2));
+
+    return {
+        'invoiceItems': invoiceItems,
+        'invoiceItemsValue': invoiceItemsValue
+    };
+}
+
+function getShipmentDescription(invoiceItems) {
+    if (Array.isArray(invoiceItems) && invoiceItems.length === 1) {
+        return invoiceItems[0].Description || null;
+    }
+
+    return null;
+}
+
+function convertToExportFormat(data, order){
+    try {
+        const consigneeData = data['ConsigneeAddress'];
+        const packages = getPackageForExportOrder(data);
+        const invoiceItemsArray = getInvoiceItemsForExportOrderShopify(order);
+        const invoiceItems = invoiceItemsArray['invoiceItems'];
+        const invoiceItemsValue = invoiceItemsArray['invoiceItemsValue'];
+
+        return {
+            'Consignee': {
+                'ContactPerson': consigneeData['ContactPerson'],
+                'CompanyName': order.shipping_address.company || consigneeData['ContactPerson'],
+                'AddressLine1': order.shipping_address.address1,
+                'AddressLine2': order.shipping_address.address2,
+                'City': consigneeData['CityName'],
+                'State': order.shipping_address.province_code,
+                'Postcode': consigneeData['ZipCode'],
+                'Country': order.shipping_address.country_code,
+                'Phone': consigneeData['Phone1'],
+                'Email': consigneeData['ContactEmail']
+            },
+            'Packages': packages,
+            'InvoiceItems': invoiceItems,
+            'ProcessName': 11,
+            'ShipmentValue': invoiceItemsValue,
+            'ShipmentCurrency': order.presentment_currency || order.currency,
+            'ShipmentDescription': getShipmentDescription(invoiceItems),
+            'InvoiceFreightCharges': calculateTotalDiscountedShippingPrice(order),
+        }
+    } catch(e){
+        console.log('convertToExportFormat ERROR ',e)
+    }
+
+    return data;
+}
+
+function calculateTotalDiscountedShippingPrice(orderData) {
+    // Ensure the order object and shipping_lines exist and are valid
+    if (!orderData || !orderData.shipping_lines || !Array.isArray(orderData.shipping_lines)) {
+        console.error("Invalid order data or missing shipping lines array.");
+        return 0;
+    }
+
+    let totalShippingCost = 0;
+
+    // Iterate over each shipping line in the array
+    orderData.shipping_lines.forEach(line => {
+        // The price comes from the API as a string, so we convert it to a float
+        const price = parseFloat(line.discounted_price);
+
+        if (!isNaN(price)) {
+            totalShippingCost += price;
+        } else {
+            console.warn(`Could not parse price for shipping line ID: ${line.id}`);
+        }
+    });
+
+    // Return the total rounded to 2 decimal places for financial calculations
+    return parseFloat(totalShippingCost.toFixed(2));
+}
+
+function getValidationErrorsArray(response) {
+    let errors = [];
+
+    const validationErrors = response?.ValidationErrors;
+
+    if (validationErrors && typeof validationErrors === 'object') {
+        for (const field in validationErrors) {
+            const fieldErrors = validationErrors[field];
+
+            if (Array.isArray(fieldErrors)) {
+                errors.push(...fieldErrors);
+            }
+        }
+    }
+
+    return errors;
 }
 
 module.exports = {
@@ -1127,5 +1303,9 @@ module.exports = {
     isFulfillOrderItemsEnabled,
     isGetWaybillStatusEnabled,
     isShippingMethodAllowCreateWaybill,
-    formatDate
+    formatDate,
+    convertToExportFormat,
+    isValidExportOrder,
+    getValidationErrorsArray,
+    isExportOrder
 }

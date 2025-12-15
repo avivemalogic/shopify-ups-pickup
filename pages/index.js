@@ -65,8 +65,10 @@ class Index extends Component{
             'shippingMethods': [],
             'shippingMethodSelected': {},
             'enableShippingMethodSelect': {},
+            'internationalExportEnable': {},
             'isAuthValid': false,
-            'customerType': null
+            'customerType': null,
+            'isCreditExport': false
         };
     }
 
@@ -119,7 +121,8 @@ class Index extends Component{
         if(this.props.data.isAuthValid){
             this.setState({
                 'isAuthValid': this.props.data.isAuthValid,
-                'customerType': this.props.data.customerType
+                'customerType': this.props.data.customerType,
+                'isCreditExport': this.props.data.isCreditExport
             })
         }
 
@@ -421,7 +424,7 @@ class Index extends Component{
                                         :
                                         state.isAuthValid
                                             ?
-                                            <div><div style={{display: 'flex'}}><Icon color="success" source={CircleTickMajor} /><span style={{flexGrow: '1', marginRight: '10px'}}>פרטי ההתחברות תקינים</span></div><div style={{marginRight: '30px'}}>סוג לקוח: {state.customerType}</div></div>
+                                            <div><div style={{display: 'flex'}}><Icon color="success" source={CircleTickMajor} /><span style={{flexGrow: '1', marginRight: '10px'}}>פרטי ההתחברות תקינים</span></div><div style={{marginRight: '30px'}}>סוג לקוח פנים ארצי: {state.customerType}</div><div style={{marginRight: '30px'}}>סוג לקוח בינלאומי: {state.isCreditExport ? "אשראי" : "מזומן"}</div></div>
                                             :
                                             <InlineError message="פרטי ההתחברות לא נכונים" />
                                     }
@@ -435,6 +438,20 @@ class Index extends Component{
                                     type="text"
                                 />
                             </Card>
+
+                            { state.isCreditExport &&
+                            <Card sectioned>
+                                <SettingToggle
+                                    action={{
+                                        content: state.internationalExportEnable.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                        onAction: () => this.handleToggle('internationalExportEnable'),
+                                    }}
+                                    enabled={state.internationalExportEnable.value} >
+                                    International is <TextStyle variation="strong">{state.internationalExportEnable.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                                </SettingToggle>
+                            </Card>
+                            }
+
                             <Card sectioned>
                                 <Select
                                     value={state.upsIntegrationReference2.value}
@@ -570,7 +587,7 @@ class Index extends Component{
 
             const json = await response.json();
 
-            this.setState({'isAuthValid': json.isAuthValid, 'customerType': json.customerType })
+            this.setState({'isAuthValid': json.isAuthValid, 'customerType': json.customerType, 'isCreditExport': json.isCreditExport })
         } catch (e){
 
         }

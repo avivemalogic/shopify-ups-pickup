@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.2.4",
+    "value": "1.2.5",
     "type": "string"
   },
   {
@@ -183,6 +183,12 @@
     "namespace": "pickups-closest",
     "key": "closestPointsMinimum",
     "value": "X",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "internationalExportEnable",
+    "value": "false",
     "type": "string"
   }
 ]
