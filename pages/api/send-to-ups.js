@@ -170,7 +170,19 @@ async function restApiSendToUps(shop, accessToken, apiAccessToken, shippingData,
         })
     }
 
-    if(isValidExportOrder(getOrderJson.order, integrationData, shippingData)){
+    const exportValidation = isValidExportOrder(
+        getOrderJson.order,
+        integrationData,
+        shippingData
+    );
+
+    if (exportValidation.error) {
+        return {
+            errors: exportValidation.error
+        };
+    }
+
+    if (exportValidation.isValid) {
         functionArgs = convertToExportFormat(functionArgs, getOrderJson.order);
     }
 

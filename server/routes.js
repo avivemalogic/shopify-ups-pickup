@@ -172,23 +172,43 @@ router.post('/api/get-shipping-methods', bodyParser(), async (ctx, next) => {
     ctx.statusCode = 200;
 });
 
-router.post('/api/get-product-data', bodyParser(), async (ctx, next) => {
-    const data = ctx.request.body;
-    const shop = data.shop;
-    const productId = data.productId;
+router.post('/api/get-product-data', bodyParser(), async (ctx) => {
+    const { shop, productId, accessToken: tokenFromBody } = ctx.request.body;
 
-    const accessToken = data.accessToken || await getAccessToken(shop);
+    const accessToken = tokenFromBody || await getAccessToken(shop);
 
-    const requestOptions = {
-        method: 'GET',
-        headers: getShopifyRequestHeaders(accessToken)
+    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/graphql.json`;
+
+    const query = `
+      query getProduct($id: ID!) {
+        product(id: $id) {
+          id
+          title
+          handle
+          status
+          tags
+        }
+      }
+    `;
+
+    const variables = {
+        id: `gid://shopify/Product/${productId}`
     };
 
-    const apiUrl = `https://${shop}/admin/api/${API_VERSION}/products/${productId}.json`;
+    const requestOptions = {
+        method: 'POST',
+        headers: {
+            ...getShopifyRequestHeaders(accessToken),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query, variables })
+    };
+
     const response = await fetch(apiUrl, requestOptions);
 
     ctx.body = await getResponseJsonAndSaveLogs('get-product-data', shop, apiUrl, requestOptions, response);
-    ctx.statusCode = 200;
+
+    ctx.status = 200;
 });
 
 router.post('/api/get-order-pickup-point', bodyParser(), async (ctx, next) => {

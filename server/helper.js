@@ -1091,8 +1091,32 @@ function isExportOrder(order){
     return order.shipping_address.country_code !== 'IL';
 }
 
-function isValidExportOrder(order, integrationData, shippingData){
-    return !!(isExportOrder(order) && isInternationalExportEnable(integrationData) && shippingData['isCreditExport']);
+function isValidExportOrder(order, integrationData, shippingData) {
+    if (!isExportOrder(order)) {
+        return {
+            isValid: false,
+            error: ''
+        };
+    }
+
+    if (!shippingData || !shippingData.isCreditExport) {
+        return {
+            isValid: false,
+            error: 'לא ניתן לשדר משלוחים בינלאומים'
+        };
+    }
+
+    if (!isInternationalExportEnable(integrationData)) {
+        return {
+            isValid: false,
+            error: 'יש לאפשר שידור משלוחים בינלאומים'
+        };
+    }
+
+    return {
+        isValid: true,
+        error: ''
+    };
 }
 
 function getPackageForExportOrder(data){
@@ -1239,7 +1263,7 @@ function calculateTotalDiscountedShippingPrice(orderData) {
 function getValidationErrorsArray(response) {
     let errors = [];
 
-    const validationErrors = response?.ValidationErrors;
+    const validationErrors = response.ValidationErrors;
 
     if (validationErrors && typeof validationErrors === 'object') {
         for (const field in validationErrors) {
