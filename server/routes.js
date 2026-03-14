@@ -766,8 +766,6 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
     const hmac = headers['x-shopify-hmac-sha256'];
     const errorPrefix = 'Auto Send to Ups: ';
 
-    console.time('webhook/order-create shop: '+shop);
-
     if(headers['x-shopify-topic'] !== 'orders/create'){
         throw new Error(`${errorPrefix} topic is wrong`);
     }
@@ -818,29 +816,24 @@ router.post('/api/webhook/order-create', bodyParser(), async (ctx, next) => {
         }
 
         try {
-            fetch(`${HOST}api/send-to-ups?shop=${shop}&id=${orderId}&automatic=true`, {
+            const response = await fetch(`${HOST}api/send-to-ups?shop=${shop}&id=${orderId}&automatic=true`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-
-            })
-            .catch(error => {
-                throw new Error(error);
             });
+
+            await response.text();
+
         } catch (e) {
-            throw new Error(e);
+            console.error(`Auto Send to Ups - Fetch Error: ${e.message}`);
         }
 
     } catch (e){
         console.log(`${errorPrefix} ${e}`);
     }
 
-    console.timeEnd('webhook/order-create shop: '+shop);
     ctx.statusCode = 200;
     ctx.body = 'done';
 });
