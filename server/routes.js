@@ -7,6 +7,7 @@ const bodyParser = require('koa-bodyparser');
 const { verifyToken, getQueryKey } = require("koa-shopify-auth-cookieless");
 const { formatDate, saveOrderTag, isGetWaybillStatusEnabled, getOrderPickupsData, verifyHmacWebhook, createHmacWebhook, isIpWhitelist, getShopifyRequestHeaders, getAccessToken, getIntegrationData, orderIntegrationIsEnabled, orderAutomaticSendIsEnabled, isPickUpsShippingMethod, getOrderData, getResponseJsonAndSaveLogs, saveOrderPickupPoint, autoSendToUps, getCustomerTypeApi, getDate, getMetafieldsCount } = require('./helper');
 const { createPickUpsOptions } = require('./init');
+const { hasStatusAlertSettingsChanged, getStatusAlertSettingsFromIntegration, getChangedStatusAlertFieldKeys, syncStatusAlertSetup } = require('./statusAlertSetup');
 const { HOST, API_VERSION,DEBUG_MODE } = process.env;
 
 router.get('/', async (ctx, next) => {
@@ -29,10 +30,12 @@ router.post('/api/save-shipping-data', bodyParser(), async (ctx, next) => {
     const fields = data.fields;
     const shop = data.shop;
     let responseData = [];
+    const savedFieldIds = [];
     const accessToken = data.accessToken || await getAccessToken(shop);
 
     for (const key in fields){
         const item = fields[key];
+        savedFieldIds.push(String(item.id));
 
         const shippingDataRequestOptions = {
             method: 'PUT',
@@ -54,7 +57,33 @@ router.post('/api/save-shipping-data', bodyParser(), async (ctx, next) => {
             responseData = responseData.concat(json);
         }
     }
-    ctx.body = responseData;
+
+    let statusAlertSetup = { skipped: true, reason: 'no_relevant_changes' };
+
+    const integrationData = await getIntegrationData(shop, accessToken);
+    const changedStatusAlertFieldKeys = getChangedStatusAlertFieldKeys(integrationData, savedFieldIds);
+
+    if (hasStatusAlertSettingsChanged(changedStatusAlertFieldKeys)) {
+        if (integrationData.error) {
+            statusAlertSetup = { error: integrationData.message };
+        } else {
+            const customerTypeResponse = await getCustomerTypeApi(integrationData);
+            if (!customerTypeResponse.response) {
+                statusAlertSetup = { error: 'Authentication failed. Status alert setup was not sent.' };
+            } else {
+                statusAlertSetup = await syncStatusAlertSetup(
+                    shop,
+                    integrationData,
+                    getStatusAlertSettingsFromIntegration(integrationData)
+                );
+            }
+        }
+    }
+
+    ctx.body = {
+        metafields: responseData,
+        statusAlertSetup,
+    };
     ctx.statusCode = 200;
 });
 

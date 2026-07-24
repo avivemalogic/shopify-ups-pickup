@@ -2,7 +2,7 @@
   {
     "namespace": "pickups-options",
     "key": "fieldsVersion",
-    "value": "1.2.5",
+    "value": "1.2.7",
     "type": "string"
   },
   {
@@ -188,6 +188,36 @@
   {
     "namespace": "pickups-integration",
     "key": "internationalExportEnable",
+    "value": "false",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "enableStatusAlertWebhook",
+    "value": "false",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "statusAlertInDistribution",
+    "value": "false",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "statusAlertException",
+    "value": "false",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "statusAlertDelivered",
+    "value": "false",
+    "type": "string"
+  },
+  {
+    "namespace": "pickups-integration",
+    "key": "statusAlertAll",
     "value": "false",
     "type": "string"
   }

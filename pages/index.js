@@ -16,7 +16,8 @@ import {
     Loading,
     InlineError,
     Icon,
-    Spinner
+    Spinner,
+    Checkbox
 } from '@shopify/polaris';
 import { CircleTickMajor, CircleInformationMajor } from "@shopify/polaris-icons";
 import AllowedShippingMethods from "../src/components/settings/AllowedShippingMethods";
@@ -51,6 +52,11 @@ class Index extends Component{
             'orderIntegrationAutomatic': {},
             'orderIntegrationClosestPoints': {},
             'enableGetWaybillStatus': {},
+            'enableStatusAlertWebhook': {},
+            'statusAlertInDistribution': {},
+            'statusAlertException': {},
+            'statusAlertDelivered': {},
+            'statusAlertAll': {},
             'closestPointsEnabled': {},
             'productFreeShippingEnabled': {},
             'closestPointsPrice': {},
@@ -365,7 +371,7 @@ class Index extends Component{
                                 <SettingToggle
                                     action={{
                                         content: state.enableGetWaybillStatus.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
-                                        onAction: () => this.handleToggle('enableGetWaybillStatus'),
+                                        onAction: () => { this.handleToggle('enableGetWaybillStatus') },
                                     }}
                                     enabled={state.enableGetWaybillStatus.value} >
                                     Get Waybill Status is <TextStyle variation="strong">{state.enableGetWaybillStatus.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
@@ -373,6 +379,50 @@ class Index extends Component{
                                 <div style={{marginTop: '10px', marginBottom: '30px', display: 'flex', direction: 'rtl'}}>
                                     <Icon color="interactive" source={CircleInformationMajor} /><span style={{flex: '1', marginRight: '10px'}}>סימון זה יאפשר לך לקבל את סטטוס המשלוח בשורת ההזמנה תחת מסך ההזמנות.<br/>בכדי לבדוק סטטוס משלוח עדכני עבור הזמנה, יש ללחוץ על Get Waybill Status בכפתור הפעולות.</span>
                                 </div>
+
+                                <SettingToggle
+                                    action={{
+                                        content: state.enableStatusAlertWebhook.value === 'true' ? DISABLE_TEXT : ENABLE_TEXT,
+                                        onAction: () => { this.handleToggle('enableStatusAlertWebhook') },
+                                    }}
+                                    enabled={state.enableStatusAlertWebhook.value} >
+                                    Push Notification for Shipment Status is <TextStyle variation="strong">{state.enableStatusAlertWebhook.value === 'true' ? ENABLE_STATUS : DISABLE_STATUS}</TextStyle>.
+                                </SettingToggle>
+                                <div style={{marginTop: '10px', marginBottom: '10px', display: 'flex', direction: 'rtl'}}>
+                                    <Icon color="interactive" source={CircleInformationMajor} /><span style={{flex: '1', marginRight: '10px'}}>קבלת עדכונים לממשק ההזמנות באופן אוטומטי בעת שינוי סטטוס משלוח.</span>
+                                </div>
+                                {state.enableStatusAlertWebhook.value === 'true' &&
+                                    <div style={{marginBottom: '30px', direction: 'rtl', textAlign: 'right'}}>
+                                        <Card sectioned>
+                                            <Checkbox
+                                                label="משלוחים בהפצה"
+                                                checked={state.statusAlertInDistribution.value === 'true'}
+                                                onChange={this.handleStatusAlertToggle('statusAlertInDistribution')}
+                                            />
+                                        </Card>
+                                        <Card sectioned>
+                                            <Checkbox
+                                                label="משלוחים בחריגה/עיכוב"
+                                                checked={state.statusAlertException.value === 'true'}
+                                                onChange={this.handleStatusAlertToggle('statusAlertException')}
+                                            />
+                                        </Card>
+                                        <Card sectioned>
+                                            <Checkbox
+                                                label="משלוחים שנמסרו"
+                                                checked={state.statusAlertDelivered.value === 'true'}
+                                                onChange={this.handleStatusAlertToggle('statusAlertDelivered')}
+                                            />
+                                        </Card>
+                                        <Card sectioned>
+                                            <Checkbox
+                                                label="כל העדכונים"
+                                                checked={state.statusAlertAll.value === 'true'}
+                                                onChange={this.handleStatusAlertToggle('statusAlertAll')}
+                                            />
+                                        </Card>
+                                    </div>
+                                }
 
                                 <SettingToggle
                                     action={{
@@ -556,7 +606,7 @@ class Index extends Component{
 
         this.state.isChanged.map((val) => { object.fields.push(this.state[val]) });
 
-        await fetch(`api/save-shipping-data`, {
+        const saveResponse = await fetch(`api/save-shipping-data`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
@@ -564,6 +614,14 @@ class Index extends Component{
             },
             body: JSON.stringify(object)
         });
+
+        const saveJson = await saveResponse.json();
+
+        if (saveJson.statusAlertSetup && saveJson.statusAlertSetup.error) {
+            this.setState({'isLoading': false});
+            this.setState({'savedText': `Save failed: ${saveJson.statusAlertSetup.error}`});
+            return;
+        }
 
         await this.checkAuthInformation(this.state.shop);
 
@@ -654,6 +712,57 @@ class Index extends Component{
             const isChanged = this.state.isChanged.concat(fieldName);
             this.setState({'isChanged': isChanged});
         }
+    };
+    markFieldChanged = (fieldName, changedFields) => {
+        if (!changedFields.includes(fieldName)) {
+            changedFields.push(fieldName);
+        }
+        return changedFields;
+    };
+    handleStatusAlertToggle = (fieldName) => {
+        return (checked) => {
+            const value = checked ? 'true' : 'false';
+            const updates = {};
+            let changedFields = this.state.isChanged.slice();
+
+            if (fieldName === 'statusAlertAll') {
+                updates.statusAlertAll = Object.assign({}, this.state.statusAlertAll, { value });
+                changedFields = this.markFieldChanged('statusAlertAll', changedFields);
+
+                if (checked) {
+                    updates.statusAlertInDistribution = Object.assign({}, this.state.statusAlertInDistribution, { value: 'true' });
+                    updates.statusAlertException = Object.assign({}, this.state.statusAlertException, { value: 'true' });
+                    updates.statusAlertDelivered = Object.assign({}, this.state.statusAlertDelivered, { value: 'true' });
+                    changedFields = this.markFieldChanged('statusAlertInDistribution', changedFields);
+                    changedFields = this.markFieldChanged('statusAlertException', changedFields);
+                    changedFields = this.markFieldChanged('statusAlertDelivered', changedFields);
+                }
+            } else {
+                updates[fieldName] = Object.assign({}, this.state[fieldName], { value });
+                changedFields = this.markFieldChanged(fieldName, changedFields);
+
+                const inDistribution = fieldName === 'statusAlertInDistribution'
+                    ? checked
+                    : this.state.statusAlertInDistribution.value === 'true';
+                const exception = fieldName === 'statusAlertException'
+                    ? checked
+                    : this.state.statusAlertException.value === 'true';
+                const delivered = fieldName === 'statusAlertDelivered'
+                    ? checked
+                    : this.state.statusAlertDelivered.value === 'true';
+
+                if (!checked) {
+                    updates.statusAlertAll = Object.assign({}, this.state.statusAlertAll, { value: 'false' });
+                    changedFields = this.markFieldChanged('statusAlertAll', changedFields);
+                } else if (inDistribution && exception && delivered) {
+                    updates.statusAlertAll = Object.assign({}, this.state.statusAlertAll, { value: 'true' });
+                    changedFields = this.markFieldChanged('statusAlertAll', changedFields);
+                }
+            }
+
+            updates.isChanged = changedFields;
+            this.setState(updates);
+        };
     };
 }
 
